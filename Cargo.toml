@@ -1,0 +1,18 @@
+[package]
+name = "termcrypt"
+version = "0.0.1"
+authors = ["peepopoggers <72892531+peepopoggers@users.noreply.github.com>"]
+edition = "2018"
+license = "AGPL-3.0-or-later"
+description = "Interface for the decentralized paradigm"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+scanln = "0.1.1"
+chrono = "0.4"
+tokio = { version = "1", features = ["full"] }
+ansi_term = "0.12.1"
+dotenv = "0.14.1"
+ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
+sled = "0.34.7"
