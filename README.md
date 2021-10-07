@@ -15,24 +15,16 @@ Planned Exchanges termcrypt currently supports:
 - [x] FTX
 - [ ] Bybit
 
-Right now the project is in very early development, so to test it you will most likely have to clone the source and will have to follow the steps on the build section below.
+Right now the project is in very early development, so to test it you will most likely have to clone the source and will have to follow the steps on the build section below. We hope you enjoy termcrypt :)
 
 ### Features
 
 termcrypt has many utilities that are growing day by day that help interact with the market. Some of the features include:
 
-- [x] Multiple exchange support (in future)
-- [x] Fast Speed (Only delays are API requests)
-- [x] Subaccounts
-- [x] Get Price of pairs
-- [x] Get balances
-- [x] Search for pairs
-- [x] Get and change account leverage
-- [x] Calculate risk % into ordersize
-- [x] Open longs or shorts in market or auto limit/stop
-- [x] (TPSL, fees, % of sub liquidity) when confirming order
-- [x] Keybinds (Up and Down to browse command history)
-- [x] Dynamic terminal size detection
+- Multiple exchange support (in future)
+- Fast Speed (Only delays are API requests)
+- Order with risk-ordersize calculations
+- Subaccounts
 
 For a more comprehensive list, run `help` or `h` inside of termcrypt.
 
