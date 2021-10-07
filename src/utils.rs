@@ -1,14 +1,46 @@
 use ansi_term::Style;
 use ansi_term::ANSIGenericString;
-use core::fmt::Display;
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
+use anyhow::{
+    Error,
+    bail
+};
+use rust_decimal::{
+    Decimal,
+    RoundingStrategy
+};
 
-pub fn retout(x: impl Display) {
-    //retout handles and adds formatting to the responses from the modules' command handling.
-    println!("  {}", x);
-}
-
-pub fn askout(prefix:&str) -> String {
-    return scanln!("  {}>> ", prefix);
+pub fn askout(prefix:&str) -> Result<String, Error> {
+    //return scanln!("  {}>> ", prefix);
+    let mut rl = Editor::<()>::new();
+    let readline = rl.readline(format!("  {}>> ", prefix).as_str());
+    /*
+    if readline? == "qq" {
+        bail!("User stopped")
+    }
+    */
+    
+    match readline {
+        //add some smart error handling to re-loop from askout function
+        Ok(readline) => {
+            if readline == "qq".to_string() {
+                bail!("User stopped");
+            } else {
+                return Ok(readline.to_string())
+            }
+        },
+        Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
+            println!("Exiting...");
+            println!();
+            println!("{}", boldt("Thank you for using termcrypt ;)"));
+            println!();
+            panic!();
+        }
+        Err(e) => {
+            panic!("{}", e);
+        }
+    }
 }
 
 pub fn boldt(text:&str) -> ANSIGenericString<'_, str>{
@@ -48,7 +80,21 @@ pub fn getsuffixsymbol(pair:&str) -> &str {
     return "";
 }
 
-pub fn version() {
+pub fn _round_dp_up(num:Decimal, places:u32) -> Decimal {
+    return num.round_dp_with_strategy(places, RoundingStrategy::MidpointAwayFromZero);
+}
+
+pub fn round_dp_tz(num:Decimal, places:u32) -> Decimal {
+    return num.round_dp_with_strategy(places, RoundingStrategy::ToZero);
+}
+
+pub fn _sideret(text:&str) {
+    println!();
+    println!("{}", boldt(text));
+    println!("Continue your previous location ⌄ below ⌄");
+}
+
+pub fn wideversion() {
     print!("{}[2J", 27 as char);
     println!();
     println!("  _______ _______ ______ _______ ______ ______ ___ ___ ______ _______ ");
@@ -56,6 +102,13 @@ pub fn version() {
     println!("   |   | |    ___|      <       |   ---|      <⑊     /|    __/ |   |  ");
     println!("   |___| |_______|___|__|__|_|__|______|___|__| |___| |___|    |___|  ");
     println!();
-    println!("  v0.1.1. License: AGPL3+");
+    println!("  v0.1.1. License: 🟢 AGPL3+");
+}
+
+pub fn slimversion() {
+    print!("{}[2J", 27 as char);
     println!();
+    println!("  {}", boldt("<termcrypt>"));
+    println!();
+    println!("  v0.1.1. License: 🟢 AGPL3+");
 }
