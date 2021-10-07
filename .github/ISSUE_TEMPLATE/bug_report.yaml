@@ -1,0 +1,42 @@
+name: Bug Report
+description: Report an issue or unexpected behavior that occurs within the application
+title: "[Bug]: "
+labels: "bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **README: Before You Submit Your Issue**
+        - Issues are not a place to go ask support questions or start discussions. Please ask support questions or start discussions on the discussions tab.
+  - type: checkboxes
+    attributes:
+      label: Guidelines
+      description: Please ensure you've completed all of the following.
+      options:
+        - label: I have encountered this bug in the latest release of termcrypt.
+          required: true  
+        - label: I have searched termcrypt's issues for a bug report that matches the one I want to report, without success.
+          required: true
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: |
+          1. Go to '...'
+          2. Click on '....'
+          3. Scroll down to '....'
+          4. See error
+    validations:
+      required: true   
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: |
+        Add additional information here.
+        You may paste the log file in code blocks and logs, or drag-and-drop screenshots/videos here.
