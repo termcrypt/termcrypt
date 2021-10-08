@@ -41,7 +41,7 @@ async fn main() {
         wide = false
     }
 
-    let mut account = api.get_account().await.unwrap();
+    let mut q_account = api.get_account().await.unwrap();
 
     //outputs version and ascii art
     if wide {
@@ -65,7 +65,7 @@ async fn main() {
             Ok(readline) => {
                 rl.add_history_entry(readline.as_str());
                 //ftx command handling
-                match ftx_inter::handle_commands(readline.as_str(), &mut subaccount, &mut pair, &mut api, &mut account, wide).await {
+                match ftx_inter::handle_commands(readline.as_str(), &mut subaccount, &mut pair, &mut api, &mut q_account, wide).await {
                     //error handling
                     Ok(_x) => {
                         //subaccount = x.subaccount;

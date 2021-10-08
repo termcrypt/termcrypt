@@ -152,6 +152,46 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             println!("{:#?}", bruh);
         },
+        "ob"|"orderbook" => {
+
+            let q_orderbook = api.get_orderbook(&pair.as_str(), Some(10)).await?;
+            //println!("{:#?}", q_orderbook);
+
+            let mut bidwidth:Decimal = dec!(0);
+            let mut askwidth:Decimal = dec!(0);
+
+            for x in &q_orderbook.bids {
+                let ollength = Decimal::from_usize(x.0.to_string().len()).unwrap()+Decimal::from_usize(x.1.to_string().len()).unwrap();
+                if ollength > bidwidth {bidwidth = ollength};
+            }
+
+            for x in &q_orderbook.asks {
+                let ollength = Decimal::from_usize(x.0.to_string().len()).unwrap()+Decimal::from_usize(x.1.to_string().len()).unwrap();
+                if ollength > askwidth {askwidth = ollength};
+            }
+
+            let fbidwidth:Decimal = (bidwidth - dec!(3))+dec!(3).round_dp(0);
+            if fbidwidth < dec!(0) {bidwidth = dec!(0)};
+            let faskwidth:Decimal = (askwidth - dec!(0))+dec!(3).round_dp(0);
+            if faskwidth < dec!(0) {askwidth = dec!(0)};
+
+            println!("{}{}", " ".repeat((bidwidth/dec!(2)).to_usize().unwrap()), boldt(format!("{} {}", "ORDERBOOK FOR", pair).as_str()));
+
+            println!("{} BID {} {} ASK {}", " ".repeat((bidwidth/dec!(2)).to_usize().unwrap()), " ".repeat((bidwidth/dec!(2)).to_usize().unwrap()), " ".repeat((askwidth/dec!(2)).to_usize().unwrap()), " ".repeat((askwidth/dec!(2)).to_usize().unwrap()));
+
+            let mut iters = 0;
+            for _x in &q_orderbook.asks {
+                let mut oblinebids = format!("{} [{}]", q_orderbook.bids[iters].0, q_orderbook.bids[iters].1);
+                let oblinewidth = Decimal::from_usize(oblinebids.len()).unwrap();
+                if oblinewidth < bidwidth+dec!(3) {
+                    oblinebids = format!("{}{}", oblinebids, " ".repeat((bidwidth+dec!(3)-oblinewidth).to_usize().unwrap()))
+                };
+
+                let oblineasks = format!("{} [{}]", q_orderbook.asks[iters].0, q_orderbook.asks[iters].1);
+                println!(" {} | {}", oblinebids, oblineasks);
+                iters += 1;
+            }
+        },
         "o"|"order" => {
             let q_account = api.get_account().await?;
             let q_market = api.get_market(&pair.as_str()).await?;
@@ -204,17 +244,24 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             let risk = ask("[Risk % of sub]")?.parse::<Decimal>()?;
             let stoploss = ask("[Stop-Loss]")?.parse::<Decimal>()?;
             let takeprofit = ask("[Take-Profit]")?.parse::<Decimal>()?;
-            println!("    Mid: {}", q_market.price);
-            println!("    Ask: {}", q_market.ask);
             println!("    Bid: {}", q_market.bid);
-            let entrytext:String = ask("[Entry | m]")?;
-            let entry;
+            println!("    Ask: {}", q_market.ask);
+            let entrytext:String = ask("[Entry | m | ob]")?;
+            let mut entry;
 
             let mut ismarket = false;
+            let mut isorderbook = false;
+            let mut orderbookpos:Decimal = dec!(5);
 
             if entrytext.to_uppercase() == "M".to_string() {
                 entry = q_market.price;
                 ismarket = true;
+            } else if entrytext.to_uppercase() == "OB".to_string() {
+                orderbookpos = ask("[OrderBook Pos (0-9)]")?.parse::<Decimal>()?;
+                isorderbook = true;
+
+                //temporary entry price until confirmation
+                entry = q_market.price;
             } else {
                 entry = entrytext.parse::<Decimal>()?;
             }
@@ -246,6 +293,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             println!("    Direction Type: {}", if calculation.islong {"Long"} else {"Short"});
             println!("    Market Type: {}", if isfuture {"Future"} else {"Spot"});
             println!("    Trigger Type: {}", if ismarket {"Market"} else {"Not Market"});
+            if isorderbook {println!("    OrderBook Position: {}", orderbookpos)};
             println!();
             println!("    Order Size: {} {}", calculation.quantity.round_dp(6), &quote_currency);
             println!("    SL-TP Ratio : {}R", calculation.tpslratio.round_dp(2));
@@ -281,6 +329,15 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             let q_main_order;
 
+            if isorderbook {
+                let q_orderbook = api.get_orderbook(&pair.as_str(), Some(10)).await?;
+                if calculation.islong {
+                    entry = q_orderbook.bids[orderbookpos.to_usize().unwrap()].0;
+                } else {
+                    entry = q_orderbook.asks[orderbookpos.to_usize().unwrap()].0;
+                }
+            }
+
             match ismarket {
                 true => {
                     //change this to normal market order
@@ -315,7 +372,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                         q_main_order = api.place_order(
                             pair,
                             if calculation.islong {ftx::rest::Side::Buy} else {ftx::rest::Side::Sell},
-                            None,
+                            Some(entry),
                             ftx::rest::OrderType::Limit,
                             calculation.quantity/q_market.price,
                             None,
