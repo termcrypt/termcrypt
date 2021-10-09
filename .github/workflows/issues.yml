@@ -33,7 +33,7 @@ jobs:
       # For feature requests
       - name: New feature issue
         uses: alex-page/github-project-automation-plus@v0.5.1
-        if: github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'enhancement')
+        if: github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'ISSUE:enhancement')
         with:
           project: Feature Requests
           column: To assign
