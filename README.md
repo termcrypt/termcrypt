@@ -41,6 +41,9 @@ Because of this, we chose the AGPL-3.0-or-later license because it is one of the
 
 **The APGL-3+ requires that termcrypt can not be used in any proprietary solution.**
 
+### Contributing
+If you want to open a pull request, you need to follow the instructions in CONTRIBUTING.md
+
 ### Build
 Following commands require `git`, `rustc` and `cargo`
 
