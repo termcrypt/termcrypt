@@ -17,7 +17,7 @@ jobs:
         if: github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'bug')
         with:
           project: Bug Reports
-          column: To assign
+          column: To Assign
           repo-token: ${{ secrets.PUSH_TOKEN }}
           action: update
 
@@ -27,7 +27,7 @@ jobs:
         with:
           action: delete
           project: Bug Reports
-          column: To assign
+          column: To Assign
           repo-token: ${{ secrets.PUSH_TOKEN }}
 
       # For feature requests
@@ -36,7 +36,7 @@ jobs:
         if: github.event.action == 'labeled' && contains(github.event.issue.labels.*.name, 'ISSUE:enhancement')
         with:
           project: Feature Requests
-          column: To assign
+          column: To Assign
           repo-token: ${{ secrets.PUSH_TOKEN }}
           action: update
 
@@ -46,5 +46,5 @@ jobs:
         with:
           action: delete
           project: Feature Requests
-          column: To assign
+          column: To Assign
           repo-token: ${{ secrets.PUSH_TOKEN }}
