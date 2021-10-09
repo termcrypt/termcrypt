@@ -28,7 +28,8 @@ termcrypt has many utilities that are growing day by day that help interact with
 
 For a more comprehensive list, run `help` or `h` inside of termcrypt.
 
-Kanban of planned features will be coming soon.
+Feature Requests / Plans and Issues:
+https://github.com/termcrypt/termcrypt/projects
 
 <img src="src/img/example.png" height="80"/>
 
