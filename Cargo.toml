@@ -5,17 +5,17 @@ authors = ["peepopoggers <72892531+peepopoggers@users.noreply.github.com>"]
 edition = "2018"
 license = "AGPL-3.0-or-later"
 description = "Interface for the decentralized paradigm"
+readme = "README.md"
+repository = "https://github.com/termcrypt/termcrypt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tokio = { version = "1", features = ["full"] }
 scanln = "0.1.1"
 chrono = "0.4"
-tokio = { version = "1", features = ["full"] }
 ansi_term = "0.12.1"
 dotenv = "0.14.1"
-ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
-#ftx = { path = "./src/ftxtest" }
 anyhow = "1.0.44"
 rust_decimal = "1.16"
 rust_decimal_macros = "1.16"
@@ -23,3 +23,6 @@ rustyline = "9.0.0"
 terminal_size = "0.1.17"
 #sled = "0.34.7"
 #spinners = "2.0.0"
+
+ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
+#ftx = { path = "./src/ftxtest" }

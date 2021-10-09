@@ -20,6 +20,8 @@ use rust_decimal_macros::{
     dec
 };
 
+use super::advanced_orders::*;
+
 use super::utils::{
     askout as ask,
     boldt as boldt,
@@ -39,7 +41,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
     match x {
         "h"|"help" => {
             //displays all commands
-            //i would have made this dynamic 
+            //i would have made this dynamic but brain shite
             println!("{}", boldt("UTILITY"));
             println!("  clr | clear - clear the terminal");
             println!("  h | help - get information about commands");
@@ -59,6 +61,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             println!("  lev - get current account leverage");
             println!("  lev [number] - change leverage to chosen number");
             println!("  o | order - start an order");
+            println!("  ob | orderbook - get display of orderbook");
 
             println!("{}", boldt("KEYBINDS"));
             println!("  [UP ARROW] - Replaces input with previous command");
@@ -68,7 +71,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         "sub"|"search" => {
             println!("  !For this function, please use this format: {} [parameters]", x);
         },
-        //function to change the current pair in one command
+        //change the current pair
         x if x.starts_with("pair ") => {
             let _tosearch:String = x.split("pair ").collect();
             //TBF
@@ -81,6 +84,9 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                     //changes to default account (not a subaccount)
                     *subaccount = "def".to_string();
                     println!("    {}", boldt("Returning to default account"));
+                    let mut optionstochange = Options::from_env();
+                    optionstochange.subaccount = None;
+                    *api = Rest::new(optionstochange);
                 },
                 _ => {
                     let q_subaccounts = api.get_subaccounts().await?;
@@ -247,7 +253,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             println!("    Bid: {}", q_market.bid);
             println!("    Ask: {}", q_market.ask);
             let entrytext:String = ask("[Entry | m | ob]")?;
-            let mut entry;
+            let entry;
 
             let mut ismarket = false;
             let mut isorderbook = false;
@@ -256,6 +262,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             if entrytext.to_uppercase() == "M".to_string() {
                 entry = q_market.price;
                 ismarket = true;
+
             } else if entrytext.to_uppercase() == "OB".to_string() {
                 orderbookpos = ask("[OrderBook Pos (0-9)]")?.parse::<Decimal>()?;
                 isorderbook = true;
@@ -327,6 +334,8 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             //start of ordering process
             //main order
 
+            /*
+
             let q_main_order;
 
             if isorderbook {
@@ -347,7 +356,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                         None,
                         ftx::rest::OrderType::Market, //change this later so you dont get terrible fees
                         calculation.quantity/q_market.price,
-                        None,
+                        Some(true),
                         None,
                         None, //when implimenting close limit order change to true
                         None
@@ -362,7 +371,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                             calculation.quantity/q_market.price,
                             ftx::rest::OrderType::Stop,
                             entry,
-                            None,
+                            Some(true),
                             None,
                             None,
                             None
@@ -375,14 +384,27 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                             Some(entry),
                             ftx::rest::OrderType::Limit,
                             calculation.quantity/q_market.price,
+                            Some(true),
                             None,
-                            None,
-                            None, //when implimenting close limit order change to true
+                            Some(true), //when implimenting close limit order change to true
                             None
                         ).await?;
                     }
                 }
             }
+
+            */
+
+            let q_main_order = o_now_order(NowOrder {
+                pair: pair.to_string(),
+                islong: calculation.islong,
+                real_quantity: calculation.quantity/q_market.price,
+                ismarket: ismarket,
+                entry: Some(entry),
+                price: q_market.price,
+                isorderbook: isorderbook,
+                orderbookpos: if isorderbook {Some(orderbookpos)} else {None}
+            }, api).await?;
 
             println!("{:#?}", q_main_order);
 
@@ -477,10 +499,6 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                 }
             }
             //TBF
-        },
-        //display orderbook of current pair
-        "ob" | "orderbook" => {
-            println!("{}", boldt("Orderbook"))
         },
         //get list of all markets (including futures)
         "allmarkets" => {
