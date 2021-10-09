@@ -3,10 +3,7 @@ use ftx::{
     options::Options,
     rest::Account
 };
-//use ftx::rest::Error as ftxerror;
-//use ParseFloatError as parsefloaterror;
-//use spinners;
-//use spinners::{Spinner, Spinners};
+
 use anyhow::{
     Result,
     Error,
@@ -39,8 +36,8 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
     dotenv().ok();
     //handles the command given by the user
     match x {
+        //lists all commands
         "h"|"help" => {
-            //displays all commands
             //i would have made this dynamic but brain shite
             println!("{}", boldt("UTILITY"));
             println!("  clr | clear - clear the terminal");
@@ -323,7 +320,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             let fees_of_sub = fees/total_liquid;
 
-            println!("    Fees: {} {} ({}% of sub)",  fees, &quote_currency, fees_of_sub.round_dp(4));
+            println!("    Fees: {} {} ({}% of sub)",  fees, &quote_currency, fees_of_sub.round_dp(5));
             println!();
 
             println!("{}", boldt("Confirm Values?"));
@@ -338,67 +335,6 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             //start of ordering process
             //main order
-
-            /*
-
-            let q_main_order;
-
-            if isorderbook {
-                let q_orderbook = api.get_orderbook(&pair.as_str(), Some(10)).await?;
-                if calculation.islong {
-                    entry = q_orderbook.bids[order_book_pos.to_usize().unwrap()].0;
-                } else {
-                    entry = q_orderbook.asks[order_book_pos.to_usize().unwrap()].0;
-                }
-            }
-
-            match ismarket {
-                true => {
-                    //change this to normal market order
-                    q_main_order = api.place_order(
-                        pair,
-                        if calculation.islong {ftx::rest::Side::Buy} else {ftx::rest::Side::Sell},
-                        None,
-                        ftx::rest::OrderType::Market, //change this later so you dont get terrible fees
-                        calculation.quantity/q_market.price,
-                        Some(true),
-                        None,
-                        None, //when implimenting close limit order change to true
-                        None
-                    ).await?;
-                },
-                false => {
-                    if entry > q_market.price {
-                        //trigger stop
-                        q_main_order = api.place_trigger_order(
-                            pair,
-                            if calculation.islong {ftx::rest::Side::Buy} else {ftx::rest::Side::Sell},
-                            calculation.quantity/q_market.price,
-                            ftx::rest::OrderType::Stop,
-                            entry,
-                            Some(true),
-                            None,
-                            None,
-                            None
-                        ).await?;
-                    } else {
-                        //limit
-                        q_main_order = api.place_order(
-                            pair,
-                            if calculation.islong {ftx::rest::Side::Buy} else {ftx::rest::Side::Sell},
-                            Some(entry),
-                            ftx::rest::OrderType::Limit,
-                            calculation.quantity/q_market.price,
-                            Some(true),
-                            None,
-                            Some(true), //when implimenting close limit order change to true
-                            None
-                        ).await?;
-                    }
-                }
-            }
-
-            */
 
             let q_main_order = o_now_order(NowOrder {
                 pair: pair.to_string(),

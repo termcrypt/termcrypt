@@ -5,9 +5,7 @@ use anyhow::{
 };
 
 use ftx::{
-    rest::Rest,
-    //options::Options,
-    //rest::Account
+    rest::Rest
 };
 
 use rust_decimal::prelude::*;
@@ -34,9 +32,9 @@ async fn makeorder(o:&NowOrder, api:&mut Rest) -> Result<ftx::rest::OrderInfo, E
         o.entry,
         ftx::rest::OrderType::Limit, 
         o.real_quantity,
-        None, //
         None,
-        None, //
+        None,
+        Some(true),
         None
     ).await?;
     Ok(bruh)
@@ -46,20 +44,26 @@ async fn makeorder(o:&NowOrder, api:&mut Rest) -> Result<ftx::rest::OrderInfo, E
 pub async fn o_now_order(mut o:NowOrder, api:&mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
     Ok(
         match o.entry{
-            Some(entry) if entry > o.price => {
+            //for limit entries on opposite side of market
+            Some(entry) if (entry > o.price && o.islong)||(entry < o.price && !o.islong) && !o.isorderbook => {
                 api.place_trigger_order(
                     &o.pair,
                     if o.islong {ftx::rest::Side::Buy} else {ftx::rest::Side::Sell},
                     o.real_quantity,
                     ftx::rest::OrderType::Stop,
                     entry,
-                    Some(true),
+                    None,
                     None,
                     None,
                     None
                 ).await?
             },
+            //for normal limit entries
+            Some(entry) if (entry < o.price && o.islong)||(entry > o.price && !o.islong) && !o.isorderbook => {
+                makeorder(&o, api).await?
+            }
             _ => {
+                //for immediate market orders
                 if o.ismarket {
                     api.place_order(
                         &o.pair,
@@ -72,9 +76,8 @@ pub async fn o_now_order(mut o:NowOrder, api:&mut Rest) -> Result<ftx::rest::Ord
                         None,
                         None
                     ).await?
+                //for orderbook based immediate limit order
                 } else if o.isorderbook {
-                    //start aggressive limit order
-                    //let mut _i:i32 = 0;
                     for mut _i in 1..10 {
                         let q_orderbook = api.get_orderbook(&o.pair.as_str(), Some(10)).await?;
                         if o.islong {
@@ -87,13 +90,10 @@ pub async fn o_now_order(mut o:NowOrder, api:&mut Rest) -> Result<ftx::rest::Ord
                         _i += 1;
                         if order.is_ok() {
                             return order;
-                            //break
                         }
-                        /*
-                        if order.is_err() {
+                        /*if order.is_err() {
                             println!("{:#?}", order)
-                        }
-                        */
+                        }*/
                         if _i == 10 {
                             println!("{:#?}", order);
                         } else {
