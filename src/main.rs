@@ -2,6 +2,8 @@ mod ftx_inter;
 mod misc;
 mod utils;
 mod advanced_orders;
+mod db;
+
 use dotenv::dotenv;
 //use std::thread;
 use rustyline::error::ReadlineError;
@@ -13,24 +15,36 @@ use ftx::{
     rest::Rest
 };
 
+use db::{
+    get_db_info
+};
+
 use terminal_size::{Width, Height, terminal_size};
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
+pub struct Config {
+    pub pair: String,
+}
+
 #[tokio::main]
 async fn main() { 
-    //db test
-    let path = "db";
-    // works like std::fs::open
-    let db = sled::open(path).unwrap();
-    //initiates dotenv variables
-    dotenv().ok();
+    //initiates database
+    let mut db_info = get_db_info().unwrap();
+
+    let mut pair:String = db_info.pair;
+    
+    //db.insert("yo", "bruh").unwrap();
 
     //creates subbaccount and pair defaults
     let mut subaccount: String = "def".to_string();
-    let mut pair: String = "BTC/USD".to_string();
+    //let mut pair: String = "BTC/USD".to_string();
 
     //uses .env to initiate api environment
+    dotenv().ok();
     let mut api = Rest::new(Options::from_env());
+
+    //gets user account
+    let mut q_account = api.get_account().await.unwrap();
 
     //gets terminal size
     let size = terminal_size();
@@ -44,8 +58,6 @@ async fn main() {
         wide = false
     }
 
-    let mut q_account = api.get_account().await.unwrap();
-
     //outputs version and ascii art
     if wide {
         utils::wideversion();
@@ -55,21 +67,29 @@ async fn main() {
     println!();
 
     let mut rl = Editor::<()>::new();
+    let mut loop_iteration:i32 = 0;
 
     loop {
-        /*start of loop
-        takes input from user through terminal-like interface*/
+        //INITIATE DB
+        db_info = get_db_info().unwrap();
 
-        //let input = scanln!("[{}]({})> ", subaccount.as_str(), pair.as_str());
-        //let strinput = input.as_str();
-
+        //Start of loop
+        //Takes input from user through terminal-like interface*/
         let readline = rl.readline(format!("[{}]({})> ", subaccount.as_str(), pair.as_str()).as_str());
+
         match readline {
             Ok(readline) => {
                 rl.add_history_entry(readline.as_str());
                 //ftx command handling
-                match ftx_inter::handle_commands(readline.as_str(), &mut subaccount, &mut pair, &mut api, &mut q_account, wide).await {
-                    //error handling
+                match ftx_inter::handle_commands(
+                    //make this a struct one day lazy ass
+                    readline.as_str(),
+                    &mut subaccount,
+                    &mut pair,
+                    &mut api,
+                    &mut q_account,
+                    wide
+                ).await {
                     Ok(_x) => {
                         //subaccount = x.subaccount;
                         //pair = x.pair;
@@ -82,9 +102,14 @@ async fn main() {
                     }
                 }
                 //miscellaneous command handling
-                misc::handle_commands(readline.as_str(), wide);
+                misc::handle_commands(
+                    //make this a struct one day lazy ass
+                    readline.as_str(),
+                    wide,
+                    loop_iteration
+                );
 
-                //adds padding to previous output
+                //adds padding
                 println!();
             },
             Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
@@ -100,5 +125,6 @@ async fn main() {
                 break;
             }
         }
+        loop_iteration += 1;
     }
 }

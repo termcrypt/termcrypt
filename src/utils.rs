@@ -12,14 +12,8 @@ use rust_decimal::{
 };
 
 pub fn askout(prefix:&str) -> Result<String, Error> {
-    //return scanln!("  {}>> ", prefix);
     let mut rl = Editor::<()>::new();
     let readline = rl.readline(format!("  {}>> ", prefix).as_str());
-    /*
-    if readline? == "qq" {
-        bail!("User stopped")
-    }
-    */
     
     match readline {
         //add some smart error handling to re-loop from askout function
@@ -62,7 +56,6 @@ pub fn formattedpair(pairr:[&str;2]) -> String {
 
 pub fn getsuffixsymbol(pair:&str) -> &str {
     let usdsigns:[&str; 3] = ["USD", "PERP", "USDT"];
-
     for item in &usdsigns {
         if pair.ends_with(item) {
             return "$";
@@ -72,11 +65,9 @@ pub fn getsuffixsymbol(pair:&str) -> &str {
     if pair.ends_with("BTC") {
         return "₿";
     }
-
     if pair.ends_with("ETH") {
         return "₿";
     }
-
     return "";
 }
 

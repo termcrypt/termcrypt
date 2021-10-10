@@ -27,7 +27,7 @@ use rust_decimal_macros::dec;
 //use super::utils::boldt as boldt;
 
 //Command Handling
-pub fn handle_commands(x:&str, wide:bool) {
+pub fn handle_commands(x:&str, wide:bool, loop_iteration:i32) {
     match x {
         "clr"|"clear" => print!("{}[2J", 27 as char),
         "ses"|"sessions" => {
@@ -127,6 +127,9 @@ pub fn handle_commands(x:&str, wide:bool) {
         },
         "ping" => {
             println!("{}", boldt("🏓 Pong!"));
+        },
+        "count" => {
+            println!("{}", loop_iteration);
         },
         "q" => {
             println!("Exiting...");
