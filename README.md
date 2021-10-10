@@ -3,7 +3,7 @@
 # termcrypt
 
 ![](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
-<img src="https://ForTheBadge.com/images/badges/built-with-love.svg" height="26"/>
+<img src="http://ForTheBadge.com/images/badges/built-with-love.svg" height="26"/>
 
 ![](https://img.shields.io/badge/license-AGPL--3.0%2B-green)
 ![](https://img.shields.io/badge/speed-like%20sonic-blue)
