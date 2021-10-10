@@ -8,7 +8,6 @@ use dotenv::dotenv;
 //use std::thread;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use sled;
 
 use ftx::{
     options::Options,
@@ -24,6 +23,8 @@ static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 pub struct Config {
     pub pair: String,
+    pub ftx_pub_key: String,
+    pub ftx_priv_key: String
 }
 
 #[tokio::main]
@@ -41,7 +42,12 @@ async fn main() {
 
     //uses .env to initiate api environment
     dotenv().ok();
-    let mut api = Rest::new(Options::from_env());
+    let mut api = Rest::new(Options {
+        key: Some(db_info.ftx_pub_key),
+        secret: Some(db_info.ftx_priv_key),
+        subaccount: None,
+        endpoint: ftx::options::Endpoint::Com
+    });
 
     //gets user account
     let mut q_account = api.get_account().await.unwrap();
@@ -71,6 +77,7 @@ async fn main() {
 
     loop {
         //INITIATE DB
+        
         db_info = get_db_info().unwrap();
 
         //Start of loop
