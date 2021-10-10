@@ -15,7 +15,11 @@ Planned Exchanges termcrypt currently supports:
 - [x] FTX
 - [ ] Bybit
 
-Right now the project is in very early development, so to test it you will most likely have to clone the source and will have to follow the steps on the build section below. We hope you enjoy termcrypt :)
+Right now the project is in very early development, so to test it you will most likely have to clone the source and will have to follow the steps on the build section below. 
+
+We hope you enjoy termcrypt :)
+
+[Our plans for features and fixes](https://github.com/termcrypt/termcrypt/projects).
 
 ### Documentation
 
@@ -33,8 +37,6 @@ termcrypt has many utilities that are growing day by day that help interact with
 - Subaccounts
 
 For a more comprehensive list, run `help` or `h` inside of termcrypt.
-
-[Feature Requests / Plans and Issues](https://github.com/termcrypt/termcrypt/projects).
 
 <img src="src/img/example.png" height="80"/>
 
