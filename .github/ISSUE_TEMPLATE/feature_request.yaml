@@ -1,6 +1,6 @@
 name: Feature request
 description: Suggest an idea for termcrypt which you would like to see in a future release
-title: "[Feature Request]: "
+title: "[Feature Request] "
 labels: "ISSUE:enhancement"
 body:
   - type: markdown
