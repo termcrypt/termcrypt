@@ -6,6 +6,7 @@ use dotenv::dotenv;
 //use std::thread;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use sled;
 
 use ftx::{
     options::Options,
@@ -13,13 +14,14 @@ use ftx::{
 };
 
 use terminal_size::{Width, Height, terminal_size};
-
-/* global variable
-static VAR:&str = "string";
-*/
+static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
-async fn main() {
+async fn main() { 
+    //db test
+    let path = "db";
+    // works like std::fs::open
+    let db = sled::open(path).unwrap();
     //initiates dotenv variables
     dotenv().ok();
 

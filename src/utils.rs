@@ -102,7 +102,7 @@ pub fn wideversion() {
     println!("   |   | |    ___|      <       |   ---|      <⑊     /|    __/ |   |  ");
     println!("   |___| |_______|___|__|__|_|__|______|___|__| |___| |___|    |___|  ");
     println!();
-    println!("  v0.1.1. License: 🟢 AGPL3+");
+    println!("  v{}. License: 🟢 AGPL3+", super::VERSION);
 }
 
 pub fn slimversion() {
@@ -110,5 +110,5 @@ pub fn slimversion() {
     println!();
     println!("  {}", boldt("<termcrypt>"));
     println!();
-    println!("  v0.1.1. License: 🟢 AGPL3+");
+    println!("  v{}. License: 🟢 AGPL3+", super::VERSION);
 }
