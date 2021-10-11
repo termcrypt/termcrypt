@@ -161,7 +161,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         //show orderbook for current market
         "ob"|"orderbook" => {
 
-            let q_orderbook = api.get_orderbook(&pair.as_str(), Some(10)).await?;
+            let q_orderbook = api.get_orderbook(pair.as_str(), Some(10)).await?;
             //println!("{:#?}", q_orderbook);
 
             let mut bid_width:Decimal = dec!(0);
@@ -200,7 +200,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         //initiate a market order
         "o"|"order" => {
             let q_account = api.get_account().await?;
-            let q_market = api.get_market(&pair.as_str()).await?;
+            let q_market = api.get_market(pair.as_str()).await?;
 
             let mut total_liquid:Decimal = dec!(0);
             let mut available_liquid:Decimal = dec!(0);
@@ -395,7 +395,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                 true => {
                     println!("    {}", boldt("Success (pair found)"));
                     //gets price of pair
-                    let q_market = api.get_market(&temp_pair.as_str()).await?;
+                    let q_market = api.get_market(temp_pair.as_str()).await?;
 
                     //changes pair value to new chosen pair
                     *pair = temp_pair;
@@ -408,7 +408,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         },
         //gets the price of the current pair
         "p"|"price" => {     
-            let q_market = api.get_market(&pair.as_str()).await?;
+            let q_market = api.get_market(pair.as_str()).await?;
             println!("  Mid: {}", q_market.price);
             println!("  Ask: {}", q_market.ask);
             println!("  Bid: {}", q_market.bid);

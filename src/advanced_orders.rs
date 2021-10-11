@@ -79,7 +79,7 @@ pub async fn o_now_order(mut o:NowOrder, api:&mut Rest) -> Result<ftx::rest::Ord
                 //for orderbook based immediate limit order
                 } else if o.isorderbook {
                     for mut _i in 1..10 {
-                        let q_orderbook = api.get_orderbook(&o.pair.as_str(), Some(10)).await?;
+                        let q_orderbook = api.get_orderbook(o.pair.as_str(), Some(10)).await?;
                         if o.islong {
                             o.entry = Some(q_orderbook.bids[o.orderbookpos.unwrap().to_usize().unwrap()].0);
                         } else {
