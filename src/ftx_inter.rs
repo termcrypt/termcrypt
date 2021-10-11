@@ -473,12 +473,12 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         }
         _ => ()
     }
-    return Ok (
+    Ok (
         FtxHcStruct {
             pair: pair.to_string(),
             subaccount: subaccount.to_string()
         }
-    );
+    )
 }
 
 /* SPINNER DEMO
