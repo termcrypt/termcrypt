@@ -1,11 +1,11 @@
 use anyhow::{
     Result,
     Error,
-    bail
+    bail,
 };
 
 use ftx::{
-    rest::Rest
+    rest::Rest,
 };
 
 use rust_decimal::prelude::*;
@@ -22,7 +22,7 @@ pub struct NowOrder {
     pub entry: Option<Decimal>,
     pub price: Decimal,
     pub isorderbook: bool,
-    pub orderbookpos: Option<Decimal>
+    pub orderbookpos: Option<Decimal>,
 }
 
 async fn makeorder(o:&NowOrder, api:&mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
@@ -35,7 +35,7 @@ async fn makeorder(o:&NowOrder, api:&mut Rest) -> Result<ftx::rest::OrderInfo, E
         None,
         None,
         Some(true),
-        None
+        None,
     ).await?;
     Ok(bruh)
 }
@@ -55,7 +55,7 @@ pub async fn o_now_order(mut o:NowOrder, api:&mut Rest) -> Result<ftx::rest::Ord
                     None,
                     None,
                     None,
-                    None
+                    None,
                 ).await?
             },
             //for normal limit entries
@@ -74,7 +74,7 @@ pub async fn o_now_order(mut o:NowOrder, api:&mut Rest) -> Result<ftx::rest::Ord
                         None,
                         None,
                         None,
-                        None
+                        None,
                     ).await?
                 //for orderbook based immediate limit order
                 } else if o.isorderbook {

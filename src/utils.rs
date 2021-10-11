@@ -4,16 +4,16 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use anyhow::{
     Error,
-    bail
+    bail,
 };
 use rust_decimal::{
     Decimal,
-    RoundingStrategy
+    RoundingStrategy,
 };
 
 pub fn askout(prefix:&str) -> Result<String, Error> {
-    let mut rl = Editor::<()>::new();
-    let readline = rl.readline(format!("  {}>> ", prefix).as_str());
+    let mut line_genask = Editor::<()>::new();
+    let readline = line_genask.readline(format!("  {}>> ", prefix).as_str());
     
     match readline {
         //add some smart error handling to re-loop from askout function

@@ -9,11 +9,11 @@ use rustyline::Editor;
 
 use ftx::{
     options::Options,
-    rest::Rest
+    rest::Rest,
 };
 
 use db::{
-    get_db_info
+    get_db_info,
 };
 
 use terminal_size::{Width, Height, terminal_size};
@@ -23,7 +23,7 @@ pub struct Config {
     pub default_pair: String,
     pub default_sub: String,
     pub ftx_pub_key: String,
-    pub ftx_priv_key: String
+    pub ftx_priv_key: String,
 }
 
 #[tokio::main]
@@ -40,7 +40,7 @@ async fn main() {
         key: Some(db_info.ftx_pub_key),
         secret: Some(db_info.ftx_priv_key),
         subaccount: None,
-        endpoint: ftx::options::Endpoint::Com
+        endpoint: ftx::options::Endpoint::Com,
     });
 
     //gets user account object
@@ -90,7 +90,7 @@ async fn main() {
                     &mut pair,
                     &mut api,
                     &mut q_account,
-                    wide
+                    wide,
                 ).await {
                     Ok(_x) => {
                         //subaccount = x.subaccount;
@@ -108,7 +108,7 @@ async fn main() {
                     //make this a struct one day lazy ass
                     readline.as_str(),
                     wide,
-                    loop_iteration
+                    loop_iteration,
                 );
 
                 //adds padding

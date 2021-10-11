@@ -3,13 +3,13 @@ use chrono::{
     Utc,
     DateTime,
     TimeZone,
-    Duration
+    Duration,
 };
 
 use anyhow::{
     Result,
     Error,
-    bail
+    bail,
 };
 
 use super::utils::{
@@ -17,7 +17,7 @@ use super::utils::{
     //round_dp_up,
     round_dp_tz,
     wideversion,
-    slimversion
+    slimversion,
 };
 
 use rust_decimal::prelude::*;
@@ -56,7 +56,7 @@ pub fn handle_commands(x:&str, wide:bool, loop_iteration:i32) {
                 Times {
                     hourstoevent: hours,
                     minutestoevent: minutes,
-                    _secondstoevent: seconds
+                    _secondstoevent: seconds,
                 }
             }
 
@@ -148,14 +148,14 @@ pub struct OrderCalcEntry {
     pub risk: Decimal,
     pub stoploss: Decimal,
     pub takeprofit: Decimal,
-    pub entry: Decimal
+    pub entry: Decimal,
 }
 
 #[derive(Debug)]
 pub struct OrderCalcExit {
     pub quantity: Decimal,
     pub islong: bool,
-    pub tpslratio: Decimal
+    pub tpslratio: Decimal,
 }
 
 pub fn calculate_order(ov:OrderCalcEntry) -> Result<OrderCalcExit, Error> {
@@ -204,7 +204,7 @@ pub fn calculate_order(ov:OrderCalcEntry) -> Result<OrderCalcExit, Error> {
         OrderCalcExit {
             quantity,
             islong,
-            tpslratio
+            tpslratio,
         }
     )
 

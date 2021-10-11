@@ -1,20 +1,20 @@
 use ftx::{
     rest::Rest,
     options::Options,
-    rest::Account
+    rest::Account,
 };
 
 use anyhow::{
     Result,
     Error,
-    bail
+    bail,
 };
 
 use dotenv::dotenv;
 
 use rust_decimal::prelude::*;
 use rust_decimal_macros::{
-    dec
+    dec,
 };
 
 use super::advanced_orders::*;
@@ -23,12 +23,12 @@ use super::utils::{
     askout as ask,
     boldt as boldt,
     formattedpair,
-    getsuffixsymbol
+    getsuffixsymbol,
 };
 
 pub struct FtxHcStruct {
     pub pair: String,
-    pub subaccount: String
+    pub subaccount: String,
 }
 
 //Command Handling
@@ -155,7 +155,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                 None,
                 None,
                 None,
-                None
+                None,
             ).await?;
 
             println!("{:#?}", bruh);
@@ -284,7 +284,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                 risk,
                 stoploss,
                 takeprofit,
-                entry
+                entry,
             };
 
             //println!("{:#?}", q_account);
@@ -344,7 +344,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                 entry: Some(entry),
                 price: q_market.price,
                 isorderbook,
-                orderbookpos: if isorderbook {Some(order_book_pos)} else {None}
+                orderbookpos: if isorderbook {Some(order_book_pos)} else {None},
             }, api).await?;
 
             println!("{:#?}", q_main_order);

@@ -6,7 +6,7 @@ use anyhow::{
 
 use super::utils::{
     askout as ask,
-    boldt
+    boldt,
 };
 
 pub fn data_location() -> String {
