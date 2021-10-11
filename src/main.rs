@@ -19,10 +19,10 @@ use db::{
 };
 
 use terminal_size::{Width, Height, terminal_size};
-static VERSION: &'static str = env!("CARGO_PKG_VERSION");
+static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Config {
-    pub pair: String,
+    pub default_pair: String,
     pub ftx_pub_key: String,
     pub ftx_priv_key: String
 }
@@ -30,9 +30,9 @@ pub struct Config {
 #[tokio::main]
 async fn main() { 
     //initiates database
-    let mut db_info = get_db_info().unwrap();
+    let /*mut*/ db_info = get_db_info().unwrap();
 
-    let mut pair:String = db_info.pair;
+    let mut pair:String = db_info.default_pair;
     
     //db.insert("yo", "bruh").unwrap();
 
@@ -78,7 +78,7 @@ async fn main() {
     loop {
         //INITIATE DB
         
-        db_info = get_db_info().unwrap();
+        //db_info = get_db_info().unwrap();
 
         //Start of loop
         //Takes input from user through terminal-like interface*/

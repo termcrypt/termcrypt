@@ -1,5 +1,3 @@
-use sled;
-
 use anyhow::{
     Result,
     Error,
@@ -17,14 +15,14 @@ pub fn get_db_info() -> Result<super::Config, Error> {
     //println!("{:#?}", db);
     
     //set data point variables to specified db / default values
-    let pair = get_dbinf_by_entry(&db, "pair", Some("BTC-PERP"), None)?;
+    let default_pair = get_dbinf_by_entry(&db, "default_pair", Some("BTC-PERP"), None)?;
     let ftx_pub_key = get_dbinf_by_entry(&db, "ftx_pub_key", None, Some("public FTX API key"))?;
     let ftx_priv_key = get_dbinf_by_entry(&db, "ftx_priv_key", None, Some("private FTX API secret"))?;
 
-    return Ok(super::Config {
-        pair: pair,
-        ftx_pub_key: ftx_pub_key,
-        ftx_priv_key: ftx_priv_key
+    Ok(super::Config {
+        default_pair,
+        ftx_pub_key,
+        ftx_priv_key
     })
 }
 
@@ -46,5 +44,5 @@ pub fn get_dbinf_by_entry(db:&sled::Db, key_name:&str, default_value:Option<&str
 
 pub fn insert_db_info_entry(db:&sled::Db, key_name:&str, value:&str) -> Result<String, Error> {
     db.insert(key_name, value)?;
-    return Ok(value.to_string());
+    Ok(value.to_string())
 }

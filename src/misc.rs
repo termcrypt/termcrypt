@@ -1,4 +1,3 @@
-use chrono;
 use chrono::{
     NaiveTime,
     Utc,
@@ -54,11 +53,11 @@ pub fn handle_commands(x:&str, wide:bool, loop_iteration:i32) {
                 let minutes = (hours - round_dp_tz(hours, 0)) * dec!(60);
                 let seconds = (minutes - round_dp_tz(minutes, 0)) * dec!(60);
 
-                return Times {
+                Times {
                     hourstoevent: hours,
                     minutestoevent: minutes,
                     _secondstoevent: seconds
-                };
+                }
             }
 
             //NY SESSION
@@ -145,7 +144,7 @@ pub fn handle_commands(x:&str, wide:bool, loop_iteration:i32) {
 
 //Calculations
 pub struct OrderCalcEntry {
-    pub totalliquid: Decimal,
+    pub total_liquid: Decimal,
     pub risk: Decimal,
     pub stoploss: Decimal,
     pub takeprofit: Decimal,
@@ -186,7 +185,7 @@ pub fn calculate_order(ov:OrderCalcEntry) -> Result<OrderCalcExit, Error> {
         ov.entry < ov.takeprofit
     {
         islong = true;
-        quantity = ov.totalliquid * (ov.risk / ((dec!(1) - (ov.stoploss / ov.entry)) * dec!(100)));
+        quantity = ov.total_liquid * (ov.risk / ((dec!(1) - (ov.stoploss / ov.entry)) * dec!(100)));
         tpslratio = (ov.takeprofit - ov.entry) / (ov.entry - ov.stoploss);  //toFixed(2)
     } 
     
@@ -197,15 +196,15 @@ pub fn calculate_order(ov:OrderCalcEntry) -> Result<OrderCalcExit, Error> {
         ov.entry > ov.takeprofit
     {
         islong = false;
-        quantity = ov.totalliquid * (ov.risk / ((dec!(1) - (ov.entry / ov.stoploss)) * dec!(100)));
+        quantity = ov.total_liquid * (ov.risk / ((dec!(1) - (ov.entry / ov.stoploss)) * dec!(100)));
         tpslratio = (ov.entry - ov.takeprofit) / (ov.stoploss - ov.entry);  //toFixed(2)
     }
 
-    return Ok(
+    Ok(
         OrderCalcExit {
-            quantity: quantity,
-            islong: islong,
-            tpslratio: tpslratio
+            quantity,
+            islong,
+            tpslratio
         }
     )
 

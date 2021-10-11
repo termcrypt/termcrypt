@@ -186,8 +186,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             println!("{} BID {} {} ASK {}", " ".repeat((bid_width/dec!(2)).to_usize().unwrap()), " ".repeat((bid_width/dec!(2)).to_usize().unwrap()), " ".repeat((ask_width/dec!(2)).to_usize().unwrap()), " ".repeat((ask_width/dec!(2)).to_usize().unwrap()));
 
-            let mut iters = 0;
-            for _x in &q_orderbook.asks {
+            for (iters, _x) in q_orderbook.asks.iter().enumerate() {
                 let mut ob_line_bids = format!("{} [{}]", q_orderbook.bids[iters].0, q_orderbook.bids[iters].1);
                 let ob_line_width = Decimal::from_usize(ob_line_bids.len()).unwrap();
                 if ob_line_width < bid_width+dec!(3) {
@@ -196,7 +195,6 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
                 let ob_line_asks = format!("{} [{}]", q_orderbook.asks[iters].0, q_orderbook.asks[iters].1);
                 println!(" {} | {}", ob_line_bids, ob_line_asks);
-                iters += 1;
             }
         },
         //initiate a market order
@@ -261,11 +259,11 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             let mut isorderbook = false;
             let mut order_book_pos:Decimal = dec!(5);
 
-            if entry_text.to_uppercase() == "M".to_string() {
+            if entry_text.to_uppercase() == *"M" {
                 entry = q_market.price;
                 ismarket = true;
 
-            } else if entry_text.to_uppercase() == "OB".to_string() {
+            } else if entry_text.to_uppercase() == *"OB" {
                 order_book_pos = ask("[OrderBook Pos (0-9)]")?.parse::<Decimal>()?;
                 isorderbook = true;
 
@@ -280,11 +278,11 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             }
 
             let values = super::misc::OrderCalcEntry {
-                totalliquid: total_liquid,
-                risk: risk,
-                stoploss: stoploss,
-                takeprofit: takeprofit,
-                entry: entry
+                total_liquid,
+                risk,
+                stoploss,
+                takeprofit,
+                entry
             };
 
             //println!("{:#?}", q_account);
@@ -340,10 +338,10 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                 pair: pair.to_string(),
                 islong: calculation.islong,
                 real_quantity: calculation.quantity/q_market.price,
-                ismarket: ismarket,
+                ismarket,
                 entry: Some(entry),
                 price: q_market.price,
-                isorderbook: isorderbook,
+                isorderbook,
                 orderbookpos: if isorderbook {Some(order_book_pos)} else {None}
             }, api).await?;
 
@@ -424,7 +422,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
                     println!("[{} Balance types]", q_balances.len());
                     for balance in &q_balances {
                         println!("  {}", boldt(&balance.coin));
-                        println!("     Free:  {} ({})", &balance.free, (&balance.free/&balance.total)*dec!(100));
+                        println!("     Free:  {} ({})", &balance.free, (balance.free/balance.total)*dec!(100));
                         println!("     Total: {}", &balance.total);
                         println!();
                     }
