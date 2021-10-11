@@ -132,10 +132,10 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             println!();
             let mut matched_count:i32 = 0;
             //loop over all markets
-            for item in &markets {
-                if item.name.contains(&to_search.to_uppercase()) {
+            for market in &markets {
+                if market.name.contains(&to_search.to_uppercase()) {
                     //presents to user the match found
-                    println!("HIT: {}", item.name);
+                    println!("HIT: {}", market.name);
                     //increases matched search counter
                     matched_count += 1;
                 }
@@ -382,13 +382,13 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             //format parts into temp_pair
             temp_pair = formattedpair([prefix.as_str(), suffix.as_str()]);
-               
+
 
             let q_markets = api.get_markets().await?;
             let mut isrealpair:bool = false;
         
-            for item in &q_markets {
-                if item.name == temp_pair.as_str() {
+            for market in &q_markets {
+                if market.name == temp_pair.as_str() {
                     isrealpair = true;
                 }
             }
@@ -396,7 +396,6 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
             match isrealpair {
                 true => {
                     println!("    {}", boldt("Success (pair found)"));
-                    //gets price of pair
                     let q_market = api.get_market(temp_pair.as_str()).await?;
 
                     //changes pair value to new chosen pair
@@ -446,22 +445,22 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         //gets list of all markets (including futures)
         "allmarkets" => {
             let q_markets = api.get_markets().await?;
-            for item in &q_markets {
-                print!("{} | ", item.name)
+            for market in &q_markets {
+                print!("{} | ", market.name)
             }
         },
         //gets list of all futures
         "allfutures" => {
             let q_futures = api.get_futures().await?;
-            for item in &q_futures {
-                print!("{} | ", item.name)
+            for future in &q_futures {
+                print!("{} | ", future.name)
             }
         },
         //gets list of all markets (including futures) and prices
         "listprices" => {
             let q_markets = api.get_markets().await?;
-            for item in &q_markets {
-                println!("{} - {}", item.name, item.price)
+            for market in &q_markets {
+                println!("{} - {}", market.name, market.price)
             }
         }
         //gets account object
@@ -477,6 +476,7 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
     }
     Ok (
         FtxHcStruct {
+            //this is useless lol
             pair: pair.to_string(),
             subaccount: subaccount.to_string()
         }

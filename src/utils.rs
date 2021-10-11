@@ -18,6 +18,7 @@ pub fn askout(prefix:&str) -> Result<String, Error> {
     match readline {
         //add some smart error handling to re-loop from askout function
         Ok(readline) => {
+            //if user is using askout readline and enters qq, app will exit
             if readline == *"qq" {
                 bail!("User stopped");
             } else {
@@ -37,12 +38,12 @@ pub fn askout(prefix:&str) -> Result<String, Error> {
     }
 }
 
-pub fn boldt(text:&str) -> ANSIGenericString<'_, str>{
+pub fn boldt(text: &str) -> ANSIGenericString<'_, str>{
     Style::new().bold().paint(text)
 }
 
-pub fn formattedpair(pairr:[&str;2]) -> String {
-    let divider:&str;
+pub fn formattedpair(pairr:[&str; 2]) -> String {
+    let divider: &str;
     match pairr[1].to_uppercase().as_str(){
         "PERP"|"1231" => {
             divider = "-"

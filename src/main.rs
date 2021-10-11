@@ -93,8 +93,7 @@ async fn main() {
                     wide,
                 ).await {
                     Ok(_x) => {
-                        //subaccount = x.subaccount;
-                        //pair = x.pair;
+                        //
                     },
                     Err(e) => {
                         println!();
