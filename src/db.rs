@@ -9,9 +9,13 @@ use super::utils::{
     boldt
 };
 
+pub fn data_location() -> String {
+    format!("{}/termcrypt/db/", dirs::data_dir().unwrap().display())
+}
+
 pub fn get_db_info() -> Result<super::Config, Error> {
     //open database
-    let db:sled::Db = sled::open("db"/*path*/)?;
+    let db:sled::Db = sled::open(data_location().as_str())?;
     //println!("{:#?}", db);
     
     //set data point variables to specified db / default values

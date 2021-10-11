@@ -62,7 +62,9 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
 
             println!("{}", boldt("KEYBINDS"));
             println!("  [UP ARROW] - Replaces input with previous command");
-            println!("  [DOWN ARROW] - Replaces input with the latter command")
+            println!("  [DOWN ARROW] - Replaces input with the latter command");
+            println!();
+            println!("  More information is in our documentation.");
         },
         //function to make sure user does not give wrong input
         "sub"|"search" => {
