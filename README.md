@@ -60,8 +60,6 @@ git clone [repo url] termcrypt
 cd termcrypt
 ```
 
-Setup the API and then
-
 Run / Build (for your os) with cargo:
 ```sh
 cargo run
@@ -69,14 +67,3 @@ cargo build
 ```
 
 Build files will be located in `target/debug`
-
-## Setup API
-
-Currently you have to create a file called .env in the project folder.
-Then enter information as follows (without square brackets):
-
-```
-RUST_LOG=info
-API_KEY=[public ftx api key]
-API_SECRET=[private ftx api secret]
-```
