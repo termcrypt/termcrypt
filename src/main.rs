@@ -3,8 +3,6 @@ mod misc;
 mod utils;
 mod advanced_orders;
 mod db;
-
-use dotenv::dotenv;
 //use std::thread;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -23,6 +21,7 @@ static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Config {
     pub default_pair: String,
+    pub default_sub: String,
     pub ftx_pub_key: String,
     pub ftx_priv_key: String
 }
@@ -32,16 +31,11 @@ async fn main() {
     //initiates database
     let /*mut*/ db_info = get_db_info().unwrap();
 
-    let mut pair:String = db_info.default_pair;
-    
-    //db.insert("yo", "bruh").unwrap();
+    //default variables
+    let mut pair:String = db_info.default_pair.to_string();
+    let mut subaccount: String = db_info.default_pair.to_string();
 
-    //creates subbaccount and pair defaults
-    let mut subaccount: String = "def".to_string();
-    //let mut pair: String = "BTC/USD".to_string();
-
-    //uses .env to initiate api environment
-    dotenv().ok();
+    //add check for valid keys later
     let mut api = Rest::new(Options {
         key: Some(db_info.ftx_pub_key),
         secret: Some(db_info.ftx_priv_key),
@@ -49,15 +43,16 @@ async fn main() {
         endpoint: ftx::options::Endpoint::Com
     });
 
-    //gets user account
+    //gets user account object
     let mut q_account = api.get_account().await.unwrap();
 
     //gets terminal size
     let size = terminal_size();
     let mut wide = true;
 
-    if let Some((Width(w), Height(_h))) = size {
-        if w<70 {
+    //wide if width is more than 70 characters
+    if let Some((Width(width), Height(_h))) = size {
+        if width<70 {
             wide = false;
         }
     } else {
@@ -72,8 +67,8 @@ async fn main() {
     };
     println!();
 
-    let mut rl = Editor::<()>::new();
-    let mut loop_iteration:i32 = 0;
+    let mut line_main = Editor::<()>::new();
+    let mut loop_iteration:i32 = 1;
 
     loop {
         //INITIATE DB
@@ -82,11 +77,11 @@ async fn main() {
 
         //Start of loop
         //Takes input from user through terminal-like interface*/
-        let readline = rl.readline(format!("[{}]({})> ", subaccount.as_str(), pair.as_str()).as_str());
+        let readline = line_main.readline(format!("[{}]({})> ", subaccount.as_str(), pair.as_str()).as_str());
 
         match readline {
             Ok(readline) => {
-                rl.add_history_entry(readline.as_str());
+                line_main.add_history_entry(readline.as_str());
                 //ftx command handling
                 match ftx_inter::handle_commands(
                     //make this a struct one day lazy ass

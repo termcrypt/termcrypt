@@ -480,11 +480,3 @@ pub async fn handle_commands<'a>(x:&str, subaccount:&mut String, pair:&mut Strin
         }
     )
 }
-
-/* SPINNER DEMO
-
-let sp = Spinner::new(&Spinners::Line, "Searching for pair".into());
-
-sp.stop();
-
-*/
