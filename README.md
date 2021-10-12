@@ -8,7 +8,7 @@
 ![](https://img.shields.io/badge/license-AGPL--3.0%2B-green)
 ![](https://img.shields.io/badge/speed-like%20sonic-blue)
 
-A terminal-based interface for efficiently trading the market.
+A terminal-like interface for efficiently trading the market.
 
 Planned Exchanges termcrypt currently supports:
 
