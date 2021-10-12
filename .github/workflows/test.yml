@@ -37,10 +37,10 @@ jobs:
         command: clippy
         args: --workspace --all-targets -- --deny=warnings
 
-    - name: Security audit
-      uses: actions-rs/audit-check@v1
-      with:
-        token: ${{ secrets.PUSH_TOKEN }}
+    #- name: Security audit
+      #uses: actions-rs/audit-check@v1
+      #with:
+        #token: ${{ secrets.PUSH_TOKEN }}
 
     - name: cargo test
       uses: actions-rs/cargo@v1
