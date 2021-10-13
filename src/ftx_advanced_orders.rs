@@ -27,9 +27,22 @@ pub struct SLOrder {
 	pub sl_type: SLType,
 }
 
+pub struct TPOrder {
+	pub pair: String,
+	pub islong: bool,
+	pub real_quantity: Decimal,
+	pub tp_price: Decimal,
+	pub tp_type: TPType,
+}
+
 pub enum SLType {
 	M, //market
-	//HS,
+	//Hs   //hardsoft,
+}
+
+pub enum TPType {
+	M,  //market
+	//Ob, //orderbook limit
 }
 
 async fn makeorder(o: &NowOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
@@ -142,21 +155,51 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 pub fn _o_aggressive_order() {}
 
 pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
-	Ok(api
-		.place_trigger_order(
-			&o.pair,
-			if o.islong {
-				ftx::rest::Side::Sell
-			} else {
-				ftx::rest::Side::Buy
-			},
-			o.real_quantity,
-			ftx::rest::OrderType::Stop,
-			o.stop_price,
-			Some(true),
-			None,
-			None,
-			None,
-		)
-		.await?)
+	Ok(match o.sl_type {
+		SLType::M => {
+			api.place_trigger_order(
+				&o.pair,
+				if o.islong {
+					ftx::rest::Side::Sell
+				} else {
+					ftx::rest::Side::Buy
+				},
+				o.real_quantity,
+				ftx::rest::OrderType::Stop,
+				o.stop_price,
+				Some(true),
+				None,
+				None,
+				None,
+			)
+			.await?
+		}
+		_ => bail!("SLType Logic error: Enum type exits but it is not an order."),
+	})
+}
+
+pub async fn o_tp_order(o: TPOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
+	Ok(match o.tp_type {
+		TPType::M => {
+			api.place_trigger_order(
+				&o.pair,
+				if o.islong {
+					ftx::rest::Side::Sell
+				} else {
+					ftx::rest::Side::Buy
+				},
+				o.real_quantity,
+				ftx::rest::OrderType::TakeProfit,
+				o.tp_price,
+				Some(true),
+				None,
+				None,
+				None,
+			)
+			.await?
+		}
+		_ => {
+			bail!("TPType Logic error: Enum type exits but it is not an order.")
+		}
+	})
 }

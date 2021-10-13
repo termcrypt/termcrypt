@@ -367,20 +367,12 @@ pub async fn handle_commands<'a>(
 				.round_dp(2)
 			);
 
-			let fees;
-			match ismarket {
-				true => {
-					fees = (calculation.quantity * account.taker_fee).round_dp(3);
-				}
-				false => {
-					fees = (calculation.quantity * account.maker_fee).round_dp(3);
-				}
-			};
+			let fees = calculate_fees(ismarket, calculation.quantity, account);
 
 			let fees_of_sub = fees / total_liquid;
 
 			println!(
-				"    Fees: {} {} ({}% of sub)",
+				"    Entry Fees: {} {} ({}% of sub)",
 				fees,
 				&quote_currency,
 				fees_of_sub.round_dp(5)
@@ -398,8 +390,8 @@ pub async fn handle_commands<'a>(
 			}
 
 			//start of ordering process
-			//main order
 
+			//MAIN ORDER
 			let q_main_order = o_now_order(
 				NowOrder {
 					pair: pair.to_string(),
@@ -423,8 +415,25 @@ pub async fn handle_commands<'a>(
 			println!("  main order type: {:?}", q_main_order.r#type);
 			println!();
 
+			//STOPLOSS ORDER
+
 			println!("  {}", boldt("Stoploss options"));
-			let sl_type = ask("[m]")?;
+			let sl_type;
+			let sl_ismarket: bool;
+			loop {
+				let sl_type_in = ask("SLTYPE [m]")?;
+				match sl_type_in.to_uppercase().as_str() {
+					"M" => {
+						sl_type = SLType::M;
+						sl_ismarket = true;
+						break;
+					}
+					_ => {
+						println!("You must choose a stoploss type");
+						continue;
+					}
+				}
+			}
 
 			let q_stop_order = o_sl_order(
 				SLOrder {
@@ -432,18 +441,58 @@ pub async fn handle_commands<'a>(
 					islong: calculation.islong,
 					real_quantity: calculation.quantity / q_market.price,
 					stop_price: stoploss,
-					sl_type: match sl_type.to_uppercase().as_str() {
-						"M" => SLType::M,
-						_ => SLType::M,
-					},
+					sl_type,
 				},
 				api,
 			)
 			.await?;
 
-			println!("{:#?}", q_stop_order);
+			println!("  Stop order id: {}", q_stop_order.id);
 
-			//take profit and stop loss
+			//TAKE-PROFIT ORDER
+
+			println!("  {}", boldt("Takeprofit options"));
+			let tp_type;
+			let tp_ismarket;
+			loop {
+				let tp_type_in = ask("TPTYPE [m]")?;
+				match tp_type_in.to_uppercase().as_str() {
+					"M" => {
+						tp_type = TPType::M;
+						tp_ismarket = true;
+						break;
+					}
+					_ => {
+						println!("Err: You must choose a take-profit type!");
+						continue;
+					}
+				}
+			}
+
+			let q_tp_order = o_tp_order(
+				TPOrder {
+					pair: pair.to_string(),
+					islong: calculation.islong,
+					real_quantity: calculation.quantity / q_market.price,
+					tp_price: takeprofit,
+					tp_type,
+				},
+				api,
+			)
+			.await?;
+
+			let sl_fees = calculate_fees(sl_ismarket, calculation.quantity, account);
+			let tp_fees = calculate_fees(tp_ismarket, calculation.quantity, account);
+
+			println!("  Stop order id: {}", q_tp_order.id);
+			println!("  SL Fees: {}", sl_fees);
+			println!("  TP Fees: {}", tp_fees);
+			println!(
+				"  Split TPSL Fees: {}",
+				(sl_fees / dec!(2)) + (tp_fees / dec!(2))
+			);
+			println!();
+			println!("{}", boldt("  ORDER COMPLETE!"));
 		}
 		//stops a trade
 		"stop" => {
@@ -586,4 +635,11 @@ pub async fn handle_commands<'a>(
 		pair: pair.to_string(),
 		subaccount: subaccount.to_string(),
 	})
+}
+
+pub fn calculate_fees(ismarket: bool, quantity: Decimal, account: &mut Account) -> Decimal {
+	match ismarket {
+		true => (quantity * account.taker_fee).round_dp(3),
+		false => (quantity * account.maker_fee).round_dp(3),
+	}
 }
