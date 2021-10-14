@@ -8,4 +8,6 @@ Also you should not use the github website to create a pull request.
 
 Instead, use `git` and `gh` in the terminal locally to open a pull request.
 
+Also, before opening a pull request, use: `cargo clippy` and also `cargo fmt` to check and format the code.
+
 Other than that, we highly appreciate pull requests that contribute to our free project and we will give feedback on pull requests if they do not fit these terms or other conditions.

@@ -5,17 +5,43 @@ use rust_decimal::{Decimal, RoundingStrategy};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-pub fn askout(prefix: &str) -> Result<String, Error> {
+use super::db::history_location;
+
+pub fn askout(prefix: &str, file_name: Option<String>) -> Result<String, Error> {
 	let mut line_genask = Editor::<()>::new();
+	if let Some(ref file_name_ac) = file_name {
+		let line_current_location = format!(
+			"{}{}.txt",
+			history_location().as_str(),
+			file_name_ac.as_str()
+		);
+		//creates history directory and file if not made already
+		if !std::path::Path::new(&line_current_location.to_string()).exists() {
+			std::fs::File::create(line_current_location.to_string()).unwrap();
+			println!("bababooey")
+		}
+
+		line_genask.load_history(&line_current_location).unwrap();
+	}
+
 	let readline = line_genask.readline(format!("  {}>> ", prefix).as_str());
 
 	match readline {
 		//add some smart error handling to re-loop from askout function
 		Ok(readline) => {
-			//if user is using askout readline and enters qq, app will exit
-			if readline == *"qq" {
+			//if user is using askout readline and enters q, app will exit
+			if readline == *"q" {
 				bail!("User stopped");
 			} else {
+				if let Some(ref file_name_ac) = file_name {
+					let line_current_location = format!(
+						"{}{}.txt",
+						history_location().as_str(),
+						file_name_ac.as_str()
+					);
+					line_genask.append_history(&line_current_location).unwrap();
+					println!("bruh");
+				}
 				Ok(readline)
 			}
 		}
@@ -48,7 +74,7 @@ pub fn boldt(text: &str) -> ANSIGenericString<'_, str> {
 	Style::new().bold().paint(text)
 }
 
-pub fn formattedpair(pairr: [&str; 2]) -> String {
+pub fn ftx_formattedpair(pairr: [&str; 2]) -> String {
 	let divider: &str;
 	match pairr[1].to_uppercase().as_str() {
 		"PERP" | "1231" => divider = "-",
@@ -62,7 +88,7 @@ pub fn formattedpair(pairr: [&str; 2]) -> String {
 	.concat()
 }
 
-pub fn getsuffixsymbol(pair: &str) -> &str {
+pub fn ftx_getsuffixsymbol(pair: &str) -> &str {
 	let usdsigns: [&str; 3] = ["USD", "PERP", "USDT"];
 	for item in &usdsigns {
 		if pair.ends_with(item) {

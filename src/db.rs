@@ -8,13 +8,17 @@ use ftx::{options::Options, rest::*};
 
 use super::utils::{askout as ask, boldt};
 
-pub fn data_location() -> String {
+pub fn database_location() -> String {
 	format!("{}/termcrypt/db/", dirs::data_dir().unwrap().display())
+}
+
+pub fn history_location() -> String {
+	format!("{}/termcrypt/history/", dirs::data_dir().unwrap().display())
 }
 
 pub async fn get_db_info() -> Result<super::Config, Error> {
 	//open database
-	let db: sled::Db = sled::open(data_location().as_str())?;
+	let db: sled::Db = sled::open(database_location().as_str())?;
 	//println!("{:#?}", db);
 
 	//set data point variables to specified db / default values
@@ -91,13 +95,13 @@ pub fn get_dbinf_by_entry(
 						boldt("termcrypt needs configuration for first time use.")
 					);
 					println!();
-					let input = ask(&format!("Please enter your {}", name.unwrap()))?;
+					let input = ask(&format!("Please enter your {}", name.unwrap()), None)?;
 					insert_db_info_entry(db, key_name, &input)?
 				}
 			}
 		}
 	} else {
-		let input = ask(&format!("Please enter your {}", name.unwrap()))?;
+		let input = ask(&format!("Please enter your {}", name.unwrap()), None)?;
 		insert_db_info_entry(db, key_name, &input)?
 	};
 	Ok(value)

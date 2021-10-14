@@ -5,13 +5,15 @@ mod ftx_advanced_orders;
 mod ftx_inter;
 mod misc;
 mod utils;
+use std::fs;
 //use std::thread;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use std::env;
 
 use ftx::{options::Options, rest::*};
 
-use db::get_db_info;
+use db::{get_db_info, history_location};
 
 use terminal_size::{terminal_size, Height, Width};
 static VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -63,37 +65,82 @@ async fn main() {
 		utils::slimversion();
 	};
 	println!();
+	//let loc = history_location();
+	//let root = Path::new(&loc);
+	//env::set_current_dir(&root);
+
+	let line_main_location = format!("{}main.txt", history_location().as_str());
+
+	//creates history directory and file if not made already
+	let _x = fs::create_dir_all(history_location().as_str());
+	match _x {
+		Ok(_x) => _x,
+		Err(_e) => (),
+	}
+
+	if !std::path::Path::new(&line_main_location.to_string()).exists() {
+		std::fs::File::create(line_main_location.to_string()).unwrap();
+	}
 
 	let mut line_main = Editor::<()>::new();
+
+	line_main.load_history(&line_main_location).unwrap();
+
+	//println!("{}", line_main_location.as_str());
+
 	let mut loop_iteration: i32 = 1;
 
 	loop {
 		//INITIATE DB
 
-		//db_info = get_db_info().unwrap();
-
 		//Start of loop
 		//Takes input from user through terminal-like interface*/
-		let readline =
+		let mut isrealcommand = false;
+		let read_line =
 			line_main.readline(format!("[{}]({})> ", subaccount.as_str(), pair.as_str()).as_str());
 
-		match readline {
-			Ok(readline) => {
-				line_main.add_history_entry(readline.as_str());
+		match read_line {
+			Ok(read_line) => {
+				line_main.add_history_entry(read_line.as_str());
 				//ftx command handling
 				match ftx_inter::handle_commands(
 					//make this a struct one day lazy ass
-					readline.as_str(),
+					read_line.as_str(),
 					&mut subaccount,
 					&mut pair,
 					&mut api,
 					&mut q_account,
 					wide,
+					//&mut db_info,
 				)
 				.await
 				{
-					Ok(_x) => {
-						//
+					Ok(x) => {
+						if !isrealcommand && x {
+							isrealcommand = true
+						}
+					}
+					Err(e) => {
+						println!();
+						eprintln!("!! Function Exited: {:?} !!", e);
+						println!();
+						continue;
+					}
+				};
+				//miscellaneous command handling
+				match misc::handle_commands(
+					//make this a struct one day lazy ass
+					read_line.as_str(),
+					wide,
+					loop_iteration,
+					//&mut db_info,
+				)
+				.await
+				{
+					Ok(x) => {
+						if !isrealcommand && x {
+							isrealcommand = true
+						}
 					}
 					Err(e) => {
 						println!();
@@ -102,13 +149,6 @@ async fn main() {
 						continue;
 					}
 				}
-				//miscellaneous command handling
-				misc::handle_commands(
-					//make this a struct one day lazy ass
-					readline.as_str(),
-					wide,
-					loop_iteration,
-				);
 
 				//adds padding
 				println!();
@@ -125,6 +165,9 @@ async fn main() {
 				println!();
 				break;
 			}
+		}
+		if isrealcommand {
+			line_main.append_history(&line_main_location).unwrap();
 		}
 		loop_iteration += 1;
 	}

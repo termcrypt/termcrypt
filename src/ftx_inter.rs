@@ -9,7 +9,7 @@ use rust_decimal_macros::dec;
 
 use super::ftx_advanced_orders::*;
 
-use super::utils::{askout as ask, boldt, formattedpair, getsuffixsymbol, yn};
+use super::utils::{askout as ask, boldt, ftx_formattedpair, ftx_getsuffixsymbol, yn};
 
 use super::db::get_db_info;
 
@@ -21,8 +21,9 @@ pub async fn handle_commands<'a>(
 	api: &mut Rest,
 	account: &mut Account,
 	_iswide: bool,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
 	dotenv().ok();
+	let mut isrealcommand = true;
 	//handles the command given by the user
 	match x {
 		//lists all commands
@@ -31,7 +32,7 @@ pub async fn handle_commands<'a>(
 			println!("{}", boldt("UTILITY"));
 			println!("  clr | clear - clear the terminal");
 			println!("  h | help - get information about commands");
-			println!("  qq - quits function (when inside function input)");
+			println!("  q - quits input when inside function");
 
 			println!("{}", boldt("SUBACCOUNTS"));
 			println!("  subs - list all subaccounts");
@@ -49,6 +50,10 @@ pub async fn handle_commands<'a>(
 			println!("  o | order - start an order");
 			println!("  ob | orderbook - get display of orderbook");
 
+			println!("{}", boldt("SETTINGS"));
+			println!("  def | defaults - change termcrypt startup defaults");
+			println!("  conf | config - change termcrypt configuration variables");
+
 			println!("{}", boldt("KEYBINDS"));
 			println!("  [UP ARROW] - Replaces input with previous command");
 			println!("  [DOWN ARROW] - Replaces input with the latter command");
@@ -61,6 +66,12 @@ pub async fn handle_commands<'a>(
 				"  !For this function, please use this format: {} [parameters]",
 				x
 			);
+		}
+		"def" | "defaults" => {
+			//
+		}
+		"conf" | "config" => {
+			//
 		}
 		//change the current pair
 		x if x.starts_with("pair ") => {
@@ -261,12 +272,12 @@ pub async fn handle_commands<'a>(
 				bail!("Your base currency for the current pair has no free liquidity")
 			}
 
-			let risk = ask("[Risk % of sub]")?.parse::<Decimal>()?;
-			let stoploss = ask("[Stop-Loss]")?.parse::<Decimal>()?;
-			let takeprofit = ask("[Take-Profit]")?.parse::<Decimal>()?;
+			let risk = ask("[Risk % of sub]", None)?.parse::<Decimal>()?;
+			let stoploss = ask("[Stop-Loss]", None)?.parse::<Decimal>()?;
+			let takeprofit = ask("[Take-Profit]", None)?.parse::<Decimal>()?;
 			println!("    Bid: {}", q_market.bid);
 			println!("    Ask: {}", q_market.ask);
-			let entry_text: String = ask("[Entry | m | ob]")?;
+			let entry_text: String = ask("[Entry | m | ob]", None)?;
 			let entry;
 
 			let mut ismarket = false;
@@ -277,7 +288,7 @@ pub async fn handle_commands<'a>(
 				entry = q_market.price;
 				ismarket = true;
 			} else if entry_text.to_uppercase() == *"OB" {
-				order_book_pos = ask("[OrderBook Pos (0-9)]")?.parse::<Decimal>()?;
+				order_book_pos = ask("[OrderBook Pos (0-9)]", None)?.parse::<Decimal>()?;
 				isorderbook = true;
 
 				//temporary entry price until confirmation
@@ -365,12 +376,12 @@ pub async fn handle_commands<'a>(
 			println!();
 
 			println!("{}", boldt("Confirm Values?"));
-			yn(ask("(y/n)")?)?;
+			yn(ask("(y/n)", None)?)?;
 
 			if calculation.tpslratio < dec!(1) {
 				println!();
 				println!("{}", boldt("The SLTP ratio is not favourable. Proceed?"));
-				yn(ask("(y/n)")?)?;
+				yn(ask("(y/n)", None)?)?;
 			}
 
 			//start of ordering process
@@ -404,7 +415,7 @@ pub async fn handle_commands<'a>(
 			let sl_type;
 			let sl_ismarket: bool;
 			loop {
-				let sl_type_in = ask("SL [m]")?;
+				let sl_type_in = ask("SL [m]", None)?;
 				match sl_type_in.to_uppercase().as_str() {
 					"M" => {
 						sl_type = SLType::M;
@@ -444,7 +455,7 @@ pub async fn handle_commands<'a>(
 			let tp_type;
 			let tp_ismarket;
 			loop {
-				let tp_type_in = ask("TP [m]")?;
+				let tp_type_in = ask("TP [m]", None)?;
 				match tp_type_in.to_uppercase().as_str() {
 					"M" => {
 						tp_type = TPType::M;
@@ -529,11 +540,11 @@ pub async fn handle_commands<'a>(
 			//take input for auto mode
 			//accept user input in two parts
 			println!("  Change pair:");
-			let prefix = ask("[Prefix]")?;
-			let suffix = ask("[Suffix]")?;
+			let prefix = ask("[Prefix]", Some("prefixpair".to_string()))?;
+			let suffix = ask("[Suffix]", None)?;
 
 			//format parts into temp_pair
-			temp_pair = formattedpair([prefix.as_str(), suffix.as_str()]);
+			temp_pair = ftx_formattedpair([prefix.as_str(), suffix.as_str()]);
 
 			let q_markets = api.request(GetMarkets).await?;
 			let mut isrealpair: bool = false;
@@ -555,7 +566,7 @@ pub async fn handle_commands<'a>(
 						"    Price ({}): {}{}",
 						pair,
 						q_market.price,
-						getsuffixsymbol(pair.as_str())
+						ftx_getsuffixsymbol(pair.as_str())
 					);
 				}
 				false => {
@@ -641,9 +652,9 @@ pub async fn handle_commands<'a>(
 		"rawmarkets" => {
 			println!("{:#?}", api.request(GetMarkets).await?);
 		}
-		_ => (),
+		_ => (isrealcommand = false),
 	}
-	Ok(())
+	Ok(isrealcommand)
 }
 
 pub fn calculate_fees(ismarket: bool, quantity: Decimal, account: &mut Account) -> Decimal {

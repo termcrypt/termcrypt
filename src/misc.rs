@@ -16,7 +16,8 @@ use rust_decimal_macros::dec;
 //use super::utils::boldt as boldt;
 
 //Command Handling
-pub fn handle_commands(x: &str, wide: bool, loop_iteration: i32) {
+pub async fn handle_commands(x: &str, wide: bool, loop_iteration: i32) -> Result<bool, Error> {
+	let mut isrealcommand = true;
 	match x {
 		"clr" | "clear" => print!("{}[2J", 27 as char),
 		"ses" | "sessions" => {
@@ -141,15 +142,9 @@ pub fn handle_commands(x: &str, wide: bool, loop_iteration: i32) {
 		"count" => {
 			println!("{}", loop_iteration);
 		}
-		"q" => {
-			println!("Exiting...");
-			println!();
-			println!("{}", boldt("Thank you for using termcrypt ;)"));
-			println!();
-			panic!();
-		}
-		_ => (),
+		_ => (isrealcommand = false),
 	}
+	Ok(isrealcommand)
 }
 
 //Calculations
