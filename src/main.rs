@@ -26,7 +26,7 @@ pub struct Config {
 #[tokio::main]
 async fn main() {
 	//initiates database
-	let /*mut*/ db_info = get_db_info().unwrap();
+	let /*mut*/ db_info = get_db_info().await.unwrap();
 
 	//default variables
 	let mut pair: String = db_info.default_pair.to_string();

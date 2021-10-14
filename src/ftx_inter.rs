@@ -70,7 +70,7 @@ pub async fn handle_commands<'a>(
 		//function to change the current subaccount in one command
 		x if x.starts_with("sub ") => {
 			let sub_to_search: String = x.split("sub ").collect();
-			let db_info = get_db_info().unwrap();
+			let db_info = get_db_info().await.unwrap();
 			match sub_to_search.as_str() {
 				"def" => {
 					//changes to default account (not a subaccount)
