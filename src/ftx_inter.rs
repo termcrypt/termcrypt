@@ -411,6 +411,11 @@ pub async fn handle_commands<'a>(
 						sl_ismarket = true;
 						break;
 					}
+					"Hs" => {
+						sl_type = SLType::Hs;
+						sl_ismarket = false;
+						break;
+					}
 					_ => {
 						println!("You must choose a stoploss type");
 						continue;
@@ -444,6 +449,11 @@ pub async fn handle_commands<'a>(
 					"M" => {
 						tp_type = TPType::M;
 						tp_ismarket = true;
+						break;
+					}
+					"ob" => {
+						tp_type = TPType::Ob;
+						tp_ismarket = false;
 						break;
 					}
 					_ => {

@@ -46,7 +46,8 @@ pub enum TPType {
 }
 
 async fn makeorder(o: &NowOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
-	let bruh = api.request(PlaceOrder{
+	let bruh = api
+		.request(PlaceOrder {
 			market: o.pair.to_string(),
 			side: if o.islong {
 				ftx::rest::Side::Buy
@@ -74,7 +75,7 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 			if (entry > o.price && o.islong)
 				|| (entry < o.price && !o.islong) && !o.isorderbook =>
 		{
-			api.request(PlaceTriggerOrder{
+			api.request(PlaceTriggerOrder {
 				market: o.pair.to_string(),
 				side: if o.islong {
 					ftx::rest::Side::Buy
@@ -87,7 +88,7 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 				reduce_only: None,
 				order_price: None,
 				retry_until_filled: None,
-				trail_value: None
+				trail_value: None,
 			})
 			.await?
 		}
@@ -101,7 +102,7 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 		_ => {
 			//for immediate market orders
 			if o.ismarket {
-				api.request(PlaceOrder{
+				api.request(PlaceOrder {
 					market: o.pair.to_string(),
 					side: if o.islong {
 						ftx::rest::Side::Buy
@@ -121,7 +122,12 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 			//for orderbook based immediate limit order
 			} else if o.isorderbook {
 				for mut _i in 1..10 {
-					let q_orderbook = api.request(GetOrderBook{market_name: o.pair.to_string(), depth: Some(10)}).await?;
+					let q_orderbook = api
+						.request(GetOrderBook {
+							market_name: o.pair.to_string(),
+							depth: Some(10),
+						})
+						.await?;
 					if o.islong {
 						o.entry =
 							Some(q_orderbook.bids[o.orderbookpos.unwrap().to_usize().unwrap()].0);
@@ -158,7 +164,7 @@ pub fn _o_aggressive_order() {}
 pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
 	Ok(match o.sl_type {
 		SLType::M => {
-			api.request(PlaceTriggerOrder{
+			api.request(PlaceTriggerOrder {
 				market: o.pair.to_string(),
 				side: if o.islong {
 					ftx::rest::Side::Sell
@@ -171,7 +177,7 @@ pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderIn
 				reduce_only: Some(true),
 				order_price: None,
 				retry_until_filled: None,
-				trail_value: None
+				trail_value: None,
 			})
 			.await?
 		}
@@ -182,7 +188,7 @@ pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderIn
 pub async fn o_tp_order(o: TPOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
 	Ok(match o.tp_type {
 		TPType::M => {
-			api.request(PlaceTriggerOrder{
+			api.request(PlaceTriggerOrder {
 				market: o.pair.to_string(),
 				side: if o.islong {
 					ftx::rest::Side::Sell

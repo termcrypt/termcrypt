@@ -405,6 +405,7 @@ dependencies = [
 [[package]]
 name = "ftx"
 version = "0.4.0"
+source = "git+https://github.com/fabianboesiger/ftx?branch=main#eaa2ab215d65e2e76686cf761725fe6bd0b3c76f"
 dependencies = [
  "chrono",
  "crc32fast",
