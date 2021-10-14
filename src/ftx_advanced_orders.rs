@@ -1,6 +1,6 @@
 use anyhow::{bail, Error, Result};
 
-use ftx::rest::Rest;
+use ftx::rest::*;
 
 use rust_decimal::prelude::*;
 /*
@@ -46,22 +46,22 @@ pub enum TPType {
 }
 
 async fn makeorder(o: &NowOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
-	let bruh = api
-		.place_order(
-			&o.pair,
-			if o.islong {
+	let bruh = api.request(PlaceOrder{
+			market: o.pair.to_string(),
+			side: if o.islong {
 				ftx::rest::Side::Buy
 			} else {
 				ftx::rest::Side::Sell
 			},
-			o.entry,
-			ftx::rest::OrderType::Limit,
-			o.real_quantity,
-			None,
-			None,
-			Some(true),
-			None,
-		)
+			price: o.entry,
+			r#type: ftx::rest::OrderType::Limit,
+			size: o.real_quantity,
+			client_id: None,
+			ioc: false,
+			post_only: true,
+			reduce_only: false,
+			reject_on_price_band: false,
+		})
 		.await?;
 	Ok(bruh)
 }
@@ -74,21 +74,21 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 			if (entry > o.price && o.islong)
 				|| (entry < o.price && !o.islong) && !o.isorderbook =>
 		{
-			api.place_trigger_order(
-				&o.pair,
-				if o.islong {
+			api.request(PlaceTriggerOrder{
+				market: o.pair.to_string(),
+				side: if o.islong {
 					ftx::rest::Side::Buy
 				} else {
 					ftx::rest::Side::Sell
 				},
-				o.real_quantity,
-				ftx::rest::OrderType::Stop,
-				entry,
-				None,
-				None,
-				None,
-				None,
-			)
+				size: o.real_quantity,
+				r#type: ftx::rest::OrderType::Stop,
+				trigger_price: entry,
+				reduce_only: None,
+				order_price: None,
+				retry_until_filled: None,
+				trail_value: None
+			})
 			.await?
 		}
 		//for normal limit entries
@@ -101,26 +101,27 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 		_ => {
 			//for immediate market orders
 			if o.ismarket {
-				api.place_order(
-					&o.pair,
-					if o.islong {
+				api.request(PlaceOrder{
+					market: o.pair.to_string(),
+					side: if o.islong {
 						ftx::rest::Side::Buy
 					} else {
 						ftx::rest::Side::Sell
 					},
-					None,
-					ftx::rest::OrderType::Market,
-					o.real_quantity,
-					None,
-					None,
-					None,
-					None,
-				)
+					price: None,
+					r#type: ftx::rest::OrderType::Market,
+					size: o.real_quantity,
+					client_id: None,
+					ioc: false,
+					post_only: false,
+					reduce_only: false,
+					reject_on_price_band: false,
+				})
 				.await?
 			//for orderbook based immediate limit order
 			} else if o.isorderbook {
 				for mut _i in 1..10 {
-					let q_orderbook = api.get_orderbook(o.pair.as_str(), Some(10)).await?;
+					let q_orderbook = api.request(GetOrderBook{market_name: o.pair.to_string(), depth: Some(10)}).await?;
 					if o.islong {
 						o.entry =
 							Some(q_orderbook.bids[o.orderbookpos.unwrap().to_usize().unwrap()].0);
@@ -157,21 +158,21 @@ pub fn _o_aggressive_order() {}
 pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
 	Ok(match o.sl_type {
 		SLType::M => {
-			api.place_trigger_order(
-				&o.pair,
-				if o.islong {
+			api.request(PlaceTriggerOrder{
+				market: o.pair.to_string(),
+				side: if o.islong {
 					ftx::rest::Side::Sell
 				} else {
 					ftx::rest::Side::Buy
 				},
-				o.real_quantity,
-				ftx::rest::OrderType::Stop,
-				o.stop_price,
-				Some(true),
-				None,
-				None,
-				None,
-			)
+				size: o.real_quantity,
+				r#type: ftx::rest::OrderType::Stop,
+				trigger_price: o.stop_price,
+				reduce_only: Some(true),
+				order_price: None,
+				retry_until_filled: None,
+				trail_value: None
+			})
 			.await?
 		}
 		SLType::Hs => bail!("Type not ready yet."),
@@ -181,21 +182,21 @@ pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderIn
 pub async fn o_tp_order(o: TPOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
 	Ok(match o.tp_type {
 		TPType::M => {
-			api.place_trigger_order(
-				&o.pair,
-				if o.islong {
+			api.request(PlaceTriggerOrder{
+				market: o.pair.to_string(),
+				side: if o.islong {
 					ftx::rest::Side::Sell
 				} else {
 					ftx::rest::Side::Buy
 				},
-				o.real_quantity,
-				ftx::rest::OrderType::TakeProfit,
-				o.tp_price,
-				Some(true),
-				None,
-				None,
-				None,
-			)
+				size: o.real_quantity,
+				r#type: ftx::rest::OrderType::TakeProfit,
+				trigger_price: o.tp_price,
+				reduce_only: Some(true),
+				order_price: None,
+				retry_until_filled: None,
+				trail_value: None,
+			})
 			.await?
 		}
 		TPType::Ob => {

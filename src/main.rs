@@ -9,7 +9,7 @@ mod utils;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use ftx::{options::Options, rest::Rest};
+use ftx::{options::Options, rest::*};
 
 use db::get_db_info;
 
@@ -41,7 +41,7 @@ async fn main() {
 	});
 
 	//gets user account object
-	let mut q_account = api.get_account().await.unwrap();
+	let mut q_account = api.request(GetAccount).await.unwrap();
 
 	//gets terminal size
 	let size = terminal_size();

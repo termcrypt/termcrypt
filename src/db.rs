@@ -18,10 +18,11 @@ pub fn get_db_info() -> Result<super::Config, Error> {
 	//set data point variables to specified db / default values
 	let default_pair = get_dbinf_by_entry(&db, "default_pair", Some("BTC-PERP"), None)?;
 	let default_sub = get_dbinf_by_entry(&db, "default_sub", Some("def"), None)?;
+	//
 	let ftx_pub_key = get_dbinf_by_entry(&db, "ftx_pub_key", None, Some("public FTX API key"))?;
 	let ftx_priv_key =
 		get_dbinf_by_entry(&db, "ftx_priv_key", None, Some("private FTX API secret"))?;
-
+	//
 	Ok(super::Config {
 		default_pair,
 		default_sub,

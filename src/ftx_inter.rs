@@ -1,4 +1,4 @@
-use ftx::{options::Options, rest::Account, rest::Rest};
+use ftx::{options::Options, rest::Account, rest::*};
 
 use anyhow::{bail, Error, Result};
 
@@ -84,7 +84,7 @@ pub async fn handle_commands<'a>(
 					});
 				}
 				_ => {
-					let q_subaccounts = api.get_subaccounts().await?;
+					let q_subaccounts = api.request(GetSubAccounts).await?;
 
 					let mut did_find = false;
 					//searches subaccounts by nickname for user choice
@@ -113,8 +113,8 @@ pub async fn handle_commands<'a>(
 			let raw_lev_choice: String = x.split("lev ").collect();
 			let lev_choice: u32 = raw_lev_choice.parse::<u32>()?;
 
-			let q_account = api.get_account().await?;
-			api.change_account_leverage(lev_choice).await?;
+			let q_account = api.request(GetAccount).await?;
+			api.request(ChangeAccountLeverage::new(lev_choice)).await?;
 
 			println!("CHANGE: {} -> {}", q_account.leverage, lev_choice);
 			println!("  {}", boldt("Success (changed leverage)"));
@@ -123,7 +123,7 @@ pub async fn handle_commands<'a>(
 		x if x.starts_with("search ") => {
 			//grabs second part of command to search for
 			let to_search: String = x.split("search ").collect();
-			let markets = api.get_markets().await?;
+			let markets = api.request(GetMarkets).await?;
 			println!();
 			let mut matched_count: i32 = 0;
 			//loop over all markets
@@ -140,7 +140,12 @@ pub async fn handle_commands<'a>(
 		}
 		//show orderbook for current market
 		"ob" | "orderbook" => {
-			let q_orderbook = api.get_orderbook(pair.as_str(), Some(10)).await?;
+			let q_orderbook = api
+				.request(GetOrderBook {
+					market_name: pair.to_string(),
+					depth: Some(10),
+				})
+				.await?;
 			//println!("{:#?}", q_orderbook);
 
 			let mut bid_width: Decimal = dec!(0);
@@ -208,8 +213,8 @@ pub async fn handle_commands<'a>(
 		}
 		//initiate a market order
 		"o" | "order" => {
-			let q_account = api.get_account().await?;
-			let q_market = api.get_market(pair.as_str()).await?;
+			let q_account = api.request(GetAccount).await?;
+			let q_market = api.request(GetMarket::new(pair.as_str())).await?;
 
 			let mut total_liquid: Decimal = dec!(0);
 			let mut available_liquid: Decimal = dec!(0);
@@ -227,7 +232,7 @@ pub async fn handle_commands<'a>(
 
 			match subaccount.as_str() {
 				"def" => {
-					let q_balances = api.get_wallet_balances().await?;
+					let q_balances = api.request(GetWalletBalances).await?;
 					for balance in q_balances {
 						if quote_currency == balance.coin {
 							found_currency = true;
@@ -237,7 +242,7 @@ pub async fn handle_commands<'a>(
 					}
 				}
 				_ => {
-					let q_balances = api.get_subaccount_balances(subaccount).await?;
+					let q_balances = api.request(GetSubaccountBalances::new(subaccount)).await?;
 					for balance in q_balances {
 						if quote_currency == balance.coin {
 							found_currency = true;
@@ -428,7 +433,7 @@ pub async fn handle_commands<'a>(
 			println!();
 			println!("  Stop order id: {}", q_stop_order.id);
 			println!();
-			
+
 			//TAKE-PROFIT ORDER
 			println!("{}", boldt("Take-profit options"));
 			let tp_type;
@@ -495,12 +500,12 @@ pub async fn handle_commands<'a>(
 		}
 		//gets current account leverage
 		"lev" => {
-			let q_account = api.get_account().await?;
+			let q_account = api.request(GetAccount).await?;
 			println!("  Current Leverage: {}", q_account.leverage);
 		}
 		//lists all subaccounts
 		"subs" => {
-			let q_subaccounts = api.get_subaccounts().await?;
+			let q_subaccounts = api.request(GetSubAccounts).await?;
 
 			let mut sub_counter: i32 = 0;
 			for sub_acc in &q_subaccounts {
@@ -520,7 +525,7 @@ pub async fn handle_commands<'a>(
 			//format parts into temp_pair
 			temp_pair = formattedpair([prefix.as_str(), suffix.as_str()]);
 
-			let q_markets = api.get_markets().await?;
+			let q_markets = api.request(GetMarkets).await?;
 			let mut isrealpair: bool = false;
 
 			for market in &q_markets {
@@ -532,7 +537,7 @@ pub async fn handle_commands<'a>(
 			match isrealpair {
 				true => {
 					println!("    {}", boldt("Success (pair found)"));
-					let q_market = api.get_market(temp_pair.as_str()).await?;
+					let q_market = api.request(GetMarket::new(temp_pair.as_str())).await?;
 
 					//changes pair value to new chosen pair
 					*pair = temp_pair;
@@ -550,7 +555,7 @@ pub async fn handle_commands<'a>(
 		}
 		//gets the price of the current pair
 		"p" | "price" => {
-			let q_market = api.get_market(pair.as_str()).await?;
+			let q_market = api.request(GetMarket::new(pair.as_str())).await?;
 			println!("  Mid: {}", q_market.price);
 			println!("  Ask: {}", q_market.ask);
 			println!("  Bid: {}", q_market.bid);
@@ -560,7 +565,7 @@ pub async fn handle_commands<'a>(
 			match subaccount.as_str() {
 				//default account (no subaccount chosen)
 				"def" => {
-					let q_balances = api.get_wallet_balances().await?;
+					let q_balances = api.request(GetWalletBalances).await?;
 					println!("[{} Balance types]", q_balances.len());
 					for balance in &q_balances {
 						println!("  {}", boldt(&balance.coin));
@@ -579,7 +584,11 @@ pub async fn handle_commands<'a>(
 				}
 				//other cases (subaccount chosen)
 				_ => {
-					let q_balances = api.get_subaccount_balances(subaccount).await?;
+					let q_balances = api
+						.request(GetSubaccountBalances {
+							nickname: subaccount.to_string(),
+						})
+						.await?;
 					println!("[{} Balance types]", q_balances.len());
 					for balance in q_balances {
 						println!("  {}", boldt(&balance.coin));
@@ -601,26 +610,26 @@ pub async fn handle_commands<'a>(
 		}
 		//gets list of all markets (including futures)
 		"allmarkets" => {
-			let q_markets = api.get_markets().await?;
+			let q_markets = api.request(GetMarkets).await?;
 			for market in &q_markets {
 				print!("{} | ", market.name)
 			}
 		}
 		//gets list of all futures
 		"allfutures" => {
-			let q_futures = api.get_futures().await?;
+			let q_futures = api.request(GetFutures).await?;
 			for future in &q_futures {
 				print!("{} | ", future.name)
 			}
 		}
 		//gets account object
 		"account" => {
-			*account = api.get_account().await?;
+			*account = api.request(GetAccount).await?;
 			println!("{:#?}", account);
 		}
 		//gets raw markets object
 		"rawmarkets" => {
-			println!("{:#?}", api.get_markets().await?);
+			println!("{:#?}", api.request(GetMarkets).await?);
 		}
 		_ => (),
 	}
