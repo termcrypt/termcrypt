@@ -23,8 +23,10 @@ rustyline = "9.0.0"
 terminal_size = "0.1.17"
 sled = "0.34"
 dirs = "4.0"
-
 #spinners = "2.0.0"
 
-ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
-#ftx = { path = "./src/ftxtest" }
+#Exchanges
+
+#ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
+#ftx = { git="https://github.com/dovahcrow/ftx", branch = "fix/OrderType"}
+ftx = { path = "./src/ftxtest" }

@@ -19,3 +19,5 @@ target/
 .vscode/
 
 db/
+
+src/ftxtest/

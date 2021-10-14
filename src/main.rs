@@ -1,3 +1,5 @@
+#![windows_subsystem = "console"]
+#![crate_type = "bin"]
 mod db;
 mod ftx_advanced_orders;
 mod ftx_inter;

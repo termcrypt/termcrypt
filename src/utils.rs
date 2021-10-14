@@ -32,6 +32,18 @@ pub fn askout(prefix: &str) -> Result<String, Error> {
 	}
 }
 
+pub fn yn(text: String) -> Result<(), Error> {
+	match text.as_str() {
+		"y" | "yes" | "Y" | "YES" => {
+			println!("  HIT: Confirmed");
+			Ok(())
+		}
+		_ => {
+			bail!("User stopped")
+		}
+	}
+}
+
 pub fn boldt(text: &str) -> ANSIGenericString<'_, str> {
 	Style::new().bold().paint(text)
 }

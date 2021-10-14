@@ -36,13 +36,13 @@ pub struct TPOrder {
 }
 
 pub enum SLType {
-	M, //market
-	//Hs   //hardsoft,
+	M,  //market
+	Hs, //hardsoft,
 }
 
 pub enum TPType {
 	M,  //market
-	//Ob, //orderbook limit
+	Ob, //orderbook limit
 }
 
 async fn makeorder(o: &NowOrder, api: &mut Rest) -> Result<ftx::rest::OrderInfo, Error> {
@@ -174,7 +174,7 @@ pub async fn o_sl_order(o: SLOrder, api: &mut Rest) -> Result<ftx::rest::OrderIn
 			)
 			.await?
 		}
-		_ => bail!("SLType Logic error: Enum type exits but it is not an order."),
+		SLType::Hs => bail!("Type not ready yet."),
 	})
 }
 
@@ -198,8 +198,8 @@ pub async fn o_tp_order(o: TPOrder, api: &mut Rest) -> Result<ftx::rest::OrderIn
 			)
 			.await?
 		}
-		_ => {
-			bail!("TPType Logic error: Enum type exits but it is not an order.")
+		TPType::Ob => {
+			bail!("Type not ready yet.")
 		}
 	})
 }

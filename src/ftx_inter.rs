@@ -9,14 +9,9 @@ use rust_decimal_macros::dec;
 
 use super::ftx_advanced_orders::*;
 
-use super::utils::{askout as ask, boldt, formattedpair, getsuffixsymbol};
+use super::utils::{askout as ask, boldt, formattedpair, getsuffixsymbol, yn};
 
 use super::db::get_db_info;
-
-pub struct FtxHcStruct {
-	pub pair: String,
-	pub subaccount: String,
-}
 
 //Command Handling
 pub async fn handle_commands<'a>(
@@ -26,7 +21,7 @@ pub async fn handle_commands<'a>(
 	api: &mut Rest,
 	account: &mut Account,
 	_iswide: bool,
-) -> Result<FtxHcStruct, Error> {
+) -> Result<(), Error> {
 	dotenv().ok();
 	//handles the command given by the user
 	match x {
@@ -116,7 +111,7 @@ pub async fn handle_commands<'a>(
 		//change account leverage
 		x if x.starts_with("lev ") => {
 			let raw_lev_choice: String = x.split("lev ").collect();
-			let lev_choice: i32 = raw_lev_choice.parse::<i32>()?;
+			let lev_choice: u32 = raw_lev_choice.parse::<u32>()?;
 
 			let q_account = api.get_account().await?;
 			api.change_account_leverage(lev_choice).await?;
@@ -142,25 +137,6 @@ pub async fn handle_commands<'a>(
 			}
 			//gives result of search operation
 			println!("  {} {}", matched_count, boldt("Pairs Found"));
-		}
-		//test order placement
-		"test" => {
-			//use usd_amount/price
-			let bruh = api
-				.place_trigger_order(
-					"BTC/USD",
-					ftx::rest::Side::Buy,
-					dec!(20),
-					ftx::rest::OrderType::Stop,
-					dec!(50000),
-					None,
-					None,
-					None,
-					None,
-				)
-				.await?;
-
-			println!("{:#?}", bruh);
 		}
 		//show orderbook for current market
 		"ob" | "orderbook" => {
@@ -326,6 +302,19 @@ pub async fn handle_commands<'a>(
 				bail!("You cannot short while not being in a future pair");
 			}
 
+			let percentage_of_liquid = ((calculation.quantity
+				/ (total_liquid
+					* if isfuture {
+						q_account.leverage
+					} else {
+						dec!(1)
+					})) * dec!(100))
+			.round_dp(2);
+
+			if percentage_of_liquid > dec!(100) {
+				bail!("You do not have enough liquidity in your account for this trade.")
+			}
+
 			println!();
 			println!("  {}", boldt("Valid Parameters"));
 			if isfuture {
@@ -355,16 +344,7 @@ pub async fn handle_commands<'a>(
 			println!("    SL-TP Ratio : {}R", calculation.tpslratio.round_dp(2));
 			println!(
 				"    % Of ({}) {} Liquidity: {}",
-				subaccount,
-				&quote_currency,
-				((calculation.quantity
-					/ (total_liquid
-						* if isfuture {
-							q_account.leverage
-						} else {
-							dec!(1)
-						})) * dec!(100))
-				.round_dp(2)
+				subaccount, &quote_currency, percentage_of_liquid,
 			);
 
 			let fees = calculate_fees(ismarket, calculation.quantity, account);
@@ -375,18 +355,17 @@ pub async fn handle_commands<'a>(
 				"    Entry Fees: {} {} ({}% of sub)",
 				fees,
 				&quote_currency,
-				fees_of_sub.round_dp(5)
+				fees_of_sub.round_dp(6)
 			);
 			println!();
 
 			println!("{}", boldt("Confirm Values?"));
-			match ask("(y/n)")?.as_str() {
-				"y" | "yes" | "Y" | "YES" => {
-					println!("  HIT: Confirmed");
-				}
-				_ => {
-					bail!("User stopped");
-				}
+			yn(ask("(y/n)")?)?;
+
+			if calculation.tpslratio < dec!(1) {
+				println!();
+				println!("{}", boldt("The SLTP ratio is not favourable. Proceed?"));
+				yn(ask("(y/n)")?)?;
 			}
 
 			//start of ordering process
@@ -416,12 +395,11 @@ pub async fn handle_commands<'a>(
 			println!();
 
 			//STOPLOSS ORDER
-
-			println!("  {}", boldt("Stoploss options"));
+			println!("{}", boldt("Stoploss options"));
 			let sl_type;
 			let sl_ismarket: bool;
 			loop {
-				let sl_type_in = ask("SLTYPE [m]")?;
+				let sl_type_in = ask("SL [m]")?;
 				match sl_type_in.to_uppercase().as_str() {
 					"M" => {
 						sl_type = SLType::M;
@@ -447,15 +425,16 @@ pub async fn handle_commands<'a>(
 			)
 			.await?;
 
+			println!();
 			println!("  Stop order id: {}", q_stop_order.id);
-
+			println!();
+			
 			//TAKE-PROFIT ORDER
-
-			println!("  {}", boldt("Takeprofit options"));
+			println!("{}", boldt("Take-profit options"));
 			let tp_type;
 			let tp_ismarket;
 			loop {
-				let tp_type_in = ask("TPTYPE [m]")?;
+				let tp_type_in = ask("TP [m]")?;
 				match tp_type_in.to_uppercase().as_str() {
 					"M" => {
 						tp_type = TPType::M;
@@ -484,12 +463,27 @@ pub async fn handle_commands<'a>(
 			let sl_fees = calculate_fees(sl_ismarket, calculation.quantity, account);
 			let tp_fees = calculate_fees(tp_ismarket, calculation.quantity, account);
 
-			println!("  Stop order id: {}", q_tp_order.id);
-			println!("  SL Fees: {}", sl_fees);
-			println!("  TP Fees: {}", tp_fees);
+			println!();
+			println!("  Take-profit order id: {}", q_tp_order.id);
+			println!();
 			println!(
-				"  Split TPSL Fees: {}",
-				(sl_fees / dec!(2)) + (tp_fees / dec!(2))
+				"  SL Fees: {} {} ({}% of sub)",
+				sl_fees,
+				&quote_currency,
+				(sl_fees / total_liquid).round_dp(6)
+			);
+			println!(
+				"  TP Fees: {} {} ({}% of sub)",
+				tp_fees,
+				&quote_currency,
+				(tp_fees / total_liquid).round_dp(6)
+			);
+			let splitfees = (sl_fees / dec!(2)) + (tp_fees / dec!(2));
+			println!(
+				"  Split TPSL Fees: {} {} ({}% of sub)",
+				splitfees,
+				&quote_currency,
+				(splitfees / total_liquid).round_dp(6),
 			);
 			println!();
 			println!("{}", boldt("  ORDER COMPLETE!"));
@@ -630,11 +624,7 @@ pub async fn handle_commands<'a>(
 		}
 		_ => (),
 	}
-	Ok(FtxHcStruct {
-		//this is useless lol
-		pair: pair.to_string(),
-		subaccount: subaccount.to_string(),
-	})
+	Ok(())
 }
 
 pub fn calculate_fees(ismarket: bool, quantity: Decimal, account: &mut Account) -> Decimal {
