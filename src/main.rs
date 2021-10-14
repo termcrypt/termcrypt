@@ -1,10 +1,12 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
 mod db;
-mod ftx_advanced_orders;
-mod ftx_inter;
+//mod ftx_advanced_orders;
+//mod ftx_inter;
+mod ftx_exchange;
 mod misc;
 mod utils;
+use ftx_exchange::*;
 use std::fs;
 //use std::thread;
 use rustyline::error::ReadlineError;

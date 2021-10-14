@@ -7,11 +7,11 @@ use dotenv::dotenv;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 
+use super::super::db::get_db_info;
+use super::super::misc;
+use super::super::utils::{askout as ask, boldt, yn};
 use super::ftx_advanced_orders::*;
-
-use super::utils::{askout as ask, boldt, ftx_formattedpair, ftx_getsuffixsymbol, yn};
-
-use super::db::get_db_info;
+use super::ftx_utils::*;
 
 //Command Handling
 pub async fn handle_commands<'a>(
@@ -272,12 +272,14 @@ pub async fn handle_commands<'a>(
 				bail!("Your base currency for the current pair has no free liquidity")
 			}
 
-			let risk = ask("[Risk % of sub]", None)?.parse::<Decimal>()?;
-			let stoploss = ask("[Stop-Loss]", None)?.parse::<Decimal>()?;
-			let takeprofit = ask("[Take-Profit]", None)?.parse::<Decimal>()?;
+			let risk = ask("[Risk % of sub]", Some("orderrisk".to_string()))?.parse::<Decimal>()?;
+			let stoploss =
+				ask("[Stop-Loss]", Some("orderstoploss".to_string()))?.parse::<Decimal>()?;
+			let takeprofit =
+				ask("[Take-Profit]", Some("ordertakeprofit".to_string()))?.parse::<Decimal>()?;
 			println!("    Bid: {}", q_market.bid);
 			println!("    Ask: {}", q_market.ask);
-			let entry_text: String = ask("[Entry | m | ob]", None)?;
+			let entry_text: String = ask("[Entry | m | ob]", Some("ordertype".to_string()))?;
 			let entry;
 
 			let mut ismarket = false;
@@ -288,7 +290,11 @@ pub async fn handle_commands<'a>(
 				entry = q_market.price;
 				ismarket = true;
 			} else if entry_text.to_uppercase() == *"OB" {
-				order_book_pos = ask("[OrderBook Pos (0-9)]", None)?.parse::<Decimal>()?;
+				order_book_pos = ask(
+					"[OrderBook Pos (0-9)]",
+					Some("orderorderbookposition".to_string()),
+				)?
+				.parse::<Decimal>()?;
 				isorderbook = true;
 
 				//temporary entry price until confirmation
@@ -301,7 +307,7 @@ pub async fn handle_commands<'a>(
 				bail!("You are at risk of liquidation so the trade cannot take place. Check leverage and risk.");
 			}
 
-			let values = super::misc::OrderCalcEntry {
+			let values = misc::OrderCalcEntry {
 				total_liquid,
 				risk,
 				stoploss,
@@ -312,7 +318,7 @@ pub async fn handle_commands<'a>(
 			//println!("{:#?}", q_account);
 			//println!("{:#?}", q_market);
 
-			let calculation: super::misc::OrderCalcExit = super::misc::calculate_order(values)?;
+			let calculation: misc::OrderCalcExit = misc::calculate_order(values)?;
 
 			if !calculation.islong && !isfuture {
 				bail!("You cannot short while not being in a future pair");
@@ -415,7 +421,7 @@ pub async fn handle_commands<'a>(
 			let sl_type;
 			let sl_ismarket: bool;
 			loop {
-				let sl_type_in = ask("SL [m]", None)?;
+				let sl_type_in = ask("SL [m]", Some("orderstoplosstype".to_string()))?;
 				match sl_type_in.to_uppercase().as_str() {
 					"M" => {
 						sl_type = SLType::M;
@@ -455,7 +461,7 @@ pub async fn handle_commands<'a>(
 			let tp_type;
 			let tp_ismarket;
 			loop {
-				let tp_type_in = ask("TP [m]", None)?;
+				let tp_type_in = ask("TP [m]", Some("ordertakeprofittype".to_string()))?;
 				match tp_type_in.to_uppercase().as_str() {
 					"M" => {
 						tp_type = TPType::M;
@@ -541,7 +547,7 @@ pub async fn handle_commands<'a>(
 			//accept user input in two parts
 			println!("  Change pair:");
 			let prefix = ask("[Prefix]", Some("prefixpair".to_string()))?;
-			let suffix = ask("[Suffix]", None)?;
+			let suffix = ask("[Suffix]", Some("suffixpair".to_string()))?;
 
 			//format parts into temp_pair
 			temp_pair = ftx_formattedpair([prefix.as_str(), suffix.as_str()]);

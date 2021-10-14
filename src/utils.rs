@@ -9,8 +9,9 @@ use super::db::history_location;
 
 pub fn askout(prefix: &str, file_name: Option<String>) -> Result<String, Error> {
 	let mut line_genask = Editor::<()>::new();
+	let mut line_current_location: String = "".to_string();
 	if let Some(ref file_name_ac) = file_name {
-		let line_current_location = format!(
+		line_current_location = format!(
 			"{}{}.txt",
 			history_location().as_str(),
 			file_name_ac.as_str()
@@ -18,7 +19,6 @@ pub fn askout(prefix: &str, file_name: Option<String>) -> Result<String, Error> 
 		//creates history directory and file if not made already
 		if !std::path::Path::new(&line_current_location.to_string()).exists() {
 			std::fs::File::create(line_current_location.to_string()).unwrap();
-			println!("bababooey")
 		}
 
 		line_genask.load_history(&line_current_location).unwrap();
@@ -33,14 +33,9 @@ pub fn askout(prefix: &str, file_name: Option<String>) -> Result<String, Error> 
 			if readline == *"q" {
 				bail!("User stopped");
 			} else {
-				if let Some(ref file_name_ac) = file_name {
-					let line_current_location = format!(
-						"{}{}.txt",
-						history_location().as_str(),
-						file_name_ac.as_str()
-					);
+				if let Some(_x) = file_name {
+					line_genask.add_history_entry(readline.as_str());
 					line_genask.append_history(&line_current_location).unwrap();
-					println!("bruh");
 				}
 				Ok(readline)
 			}
@@ -72,34 +67,6 @@ pub fn yn(text: String) -> Result<(), Error> {
 
 pub fn boldt(text: &str) -> ANSIGenericString<'_, str> {
 	Style::new().bold().paint(text)
-}
-
-pub fn ftx_formattedpair(pairr: [&str; 2]) -> String {
-	let divider: &str;
-	match pairr[1].to_uppercase().as_str() {
-		"PERP" | "1231" => divider = "-",
-		_ => divider = "/",
-	}
-	[
-		pairr[0].to_uppercase(),
-		divider.to_string(),
-		pairr[1].to_uppercase(),
-	]
-	.concat()
-}
-
-pub fn ftx_getsuffixsymbol(pair: &str) -> &str {
-	let usdsigns: [&str; 3] = ["USD", "PERP", "USDT"];
-	for item in &usdsigns {
-		if pair.ends_with(item) {
-			return "$";
-		}
-	}
-	match pair {
-		x if x.ends_with("BTC") => "₿",
-		x if x.ends_with("ETH") => "₿",
-		_ => "",
-	}
 }
 
 pub fn _round_dp_up(num: Decimal, places: u32) -> Decimal {

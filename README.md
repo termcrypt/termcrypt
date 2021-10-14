@@ -67,3 +67,9 @@ cargo build
 ```
 
 Build files will be located in `target/debug`
+
+### Hall of Fame
+This section gives credit to people that have helped substantially in the development of this project.
+
+- [fabianboesiger](https://github.com/fabianboesiger)
+- conan ⚡️
