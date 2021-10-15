@@ -7,7 +7,7 @@ use dotenv::dotenv;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 
-use super::super::db::get_db_info;
+use super::super::db::*;
 use super::super::misc;
 use super::super::utils::{askout as ask, boldt, yn};
 use super::ftx_advanced_orders::*;
@@ -70,7 +70,25 @@ pub async fn handle_commands<'a>(
 			);
 		}
 		"def" | "defaults" => {
-			//
+			println!("{}", boldt("AVAILABLE DEFAULTS"));
+			println!("  1. Change default pair to current");
+			println!("  2. Change default subaccount to current");
+			let choice = ask("[OPTION NUMBER]", Some("defaultsoptionnumber".to_string()))?;
+			let db: sled::Db = sled::open(database_location().as_str())?;
+
+			match choice.as_str() {
+				"1" => {
+					insert_db_info_entry(&db, "default_pair", pair)?;
+					println!("  Changed default pair successfully");
+				}
+				"2" => {
+					insert_db_info_entry(&db, "default_sub", subaccount)?;
+					println!("  Changed default subaccount successfully");
+				}
+				_ => {
+					println!("  {}", boldt("!! Not a choice !!"));
+				}
+			}
 		}
 		"conf" | "config" => {
 			//
