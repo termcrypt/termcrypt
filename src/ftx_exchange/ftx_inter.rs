@@ -95,7 +95,7 @@ pub async fn handle_commands<'a>(
 					});
 				}
 				_ => {
-					let q_subaccounts = api.request(GetSubAccounts).await?;
+					let q_subaccounts = api.request(GetSubaccounts).await?;
 
 					let mut did_find = false;
 					//searches subaccounts by nickname for user choice
@@ -532,7 +532,7 @@ pub async fn handle_commands<'a>(
 		}
 		//lists all subaccounts
 		"subs" => {
-			let q_subaccounts = api.request(GetSubAccounts).await?;
+			let q_subaccounts = api.request(GetSubaccounts).await?;
 
 			let mut sub_counter: i32 = 0;
 			for sub_acc in &q_subaccounts {
