@@ -45,12 +45,12 @@ pub async fn handle_commands<'a>(
 			println!("  search [query] - return all pairs containing query");
 			println!("  p | price - return the mark, ask and bid price for current pair");
 			println!("  pair - gives you an input to change the pair");
+			println!("  ob | orderbook - get display of orderbook");
 
 			println!("{}", boldt("ORDERS"));
 			println!("  lev - get current account leverage");
 			println!("  lev [number] - change leverage to chosen number");
 			println!("  o | order - start an order");
-			println!("  ob | orderbook - get display of orderbook");
 
 			println!("{}", boldt("SETTINGS"));
 			println!("  def | defaults - change termcrypt startup defaults");
