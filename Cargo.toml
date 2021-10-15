@@ -27,5 +27,5 @@ dirs = "4.0"
 
 #Exchanges
 
-ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
+ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main", version = "0.4" }
 #ftx = { path = "./src/ftxtest" }
