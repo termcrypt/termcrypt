@@ -33,7 +33,9 @@ pub async fn handle_commands<'a>(
 			println!("  clr | clear - clear the terminal");
 			println!("  h | help - get information about commands");
 			println!("  q - quits input when inside function");
-
+			println!("  date - get current local and utc date");
+			println!("  time - get current local and utc time");
+			println!("  ses | sessions - get trading session times");
 			println!("{}", boldt("SUBACCOUNTS"));
 			println!("  subs - list all subaccounts");
 			println!("  sub [nickname] - change subaccount (case sensitive)");
