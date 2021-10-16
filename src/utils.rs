@@ -77,14 +77,15 @@ pub fn round_dp_tz(num: Decimal, places: u32) -> Decimal {
 	num.round_dp_with_strategy(places, RoundingStrategy::ToZero)
 }
 
-pub fn _sideret(text: &str) {
+pub fn sideret(text: &str) {
 	println!();
+	println!("{}", "_".repeat(text.len()));
 	println!("{}", boldt(text));
 	println!("Continue your previous location ⌄ below ⌄");
 }
 
 pub fn wideversion() {
-	print!("{}[2J", 27 as char);
+	//print!("{}[2J", 27 as char);
 	println!();
 	println!("  _______ _______ ______ _______ ______ ______ ___ ___ ______ _______ ");
 	println!(" |_     _|    ___|   __ ⑊   |   |      |   __ ⑊   |   |   __ ⑊_     _|");

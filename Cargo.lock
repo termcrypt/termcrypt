@@ -404,8 +404,8 @@ dependencies = [
 
 [[package]]
 name = "ftx"
-version = "0.4.0"
-source = "git+https://github.com/fabianboesiger/ftx?branch=main#d5637a1c8601cea04ef312003abc060145b0201d"
+version = "0.4.1"
+source = "git+https://github.com/fabianboesiger/ftx?branch=main#0e45961fa94790ad6a333b58788835a8c13256bc"
 dependencies = [
  "chrono",
  "crc32fast",
@@ -1489,6 +1489,7 @@ dependencies = [
  "dirs",
  "dotenv 0.14.1",
  "ftx",
+ "futures",
  "rust_decimal",
  "rust_decimal_macros",
  "rustyline",

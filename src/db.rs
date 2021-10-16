@@ -16,7 +16,7 @@ pub fn history_location() -> String {
 	format!("{}/termcrypt/history/", dirs::data_dir().unwrap().display())
 }
 
-pub async fn get_db_info() -> Result<super::Config, Error> {
+pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 	//open database
 	let db: sled::Db = sled::open(database_location().as_str())?;
 	//println!("{:#?}", db);
@@ -51,18 +51,22 @@ pub async fn get_db_info() -> Result<super::Config, Error> {
 			endpoint: ftx::options::Endpoint::Com,
 		});
 
-		match api.request(GetAccount).await {
-			Ok(_x) => break,
-			Err(e) => {
-				println!();
-				println!("{}", boldt(format!("{}", e).as_str()));
-				println!(
-					"  {}",
-					boldt("!! API keys are not valid, please try again !!")
-				);
-				force_retype = true;
-				continue;
+		if checkapi {
+			match api.request(GetAccount).await {
+				Ok(_x) => break,
+				Err(e) => {
+					println!();
+					println!("{}", boldt(format!("{}", e).as_str()));
+					println!(
+						"  {}",
+						boldt("!! API keys are not valid, please try again !!")
+					);
+					force_retype = true;
+					continue;
+				}
 			}
+		} else {
+			break;
 		}
 	}
 	Ok(super::Config {

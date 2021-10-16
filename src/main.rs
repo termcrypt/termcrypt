@@ -1,17 +1,15 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
+#![feature(async_closure)]
 mod db;
-//mod ftx_advanced_orders;
-//mod ftx_inter;
 mod ftx_exchange;
 mod misc;
 mod utils;
 use ftx_exchange::*;
-use std::fs;
-//use std::thread;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::env;
+use std::fs;
 
 use ftx::{options::Options, rest::*};
 
@@ -30,22 +28,26 @@ pub struct Config {
 #[tokio::main]
 async fn main() {
 	//initiates database
-	let /*mut*/ db_info = get_db_info().await.unwrap();
+	let mut db_info = get_db_info(true).await.unwrap();
 
 	//default variables
 	let mut pair: String = db_info.default_pair.to_string();
 	let mut subaccount: String = db_info.default_sub.to_string();
 
 	//add check for valid keys later
-	let mut api = Rest::new(Options {
-		key: Some(db_info.ftx_pub_key),
-		secret: Some(db_info.ftx_priv_key),
-		subaccount: None,
+	let opts = Options {
+		key: Some(db_info.ftx_pub_key.to_owned()),
+		secret: Some(db_info.ftx_priv_key.to_owned()),
+		subaccount: Some(subaccount.to_string()),
 		endpoint: ftx::options::Endpoint::Com,
-	});
+	};
+	let mut api = Rest::new(opts.to_owned());
 
 	//gets user account object
 	let mut q_account = api.request(GetAccount).await.unwrap();
+
+	//starts websockets
+	tokio::spawn(ftx_ws::ftx_websocket(opts));
 
 	//gets terminal size
 	let size = terminal_size();
@@ -93,8 +95,6 @@ async fn main() {
 	let mut loop_iteration: i32 = 1;
 
 	loop {
-		//INITIATE DB
-
 		//Start of loop
 		//Takes input from user through terminal-like interface*/
 		let mut isrealcommand = false;
@@ -113,7 +113,7 @@ async fn main() {
 					&mut api,
 					&mut q_account,
 					wide,
-					//&mut db_info,
+					&mut db_info,
 				)
 				.await
 				{
@@ -171,6 +171,8 @@ async fn main() {
 		if isrealcommand {
 			line_main.append_history(&line_main_location).unwrap();
 		}
+		//UPDATE DB
+		//db_info = get_db_info(false).await.unwrap();
 		loop_iteration += 1;
 	}
 }

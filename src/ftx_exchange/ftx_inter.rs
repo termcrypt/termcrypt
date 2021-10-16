@@ -21,6 +21,7 @@ pub async fn handle_commands<'a>(
 	api: &mut Rest,
 	account: &mut Account,
 	_iswide: bool,
+	db_info: &mut super::super::Config,
 ) -> Result<bool, Error> {
 	dotenv().ok();
 	let mut isrealcommand = true;
@@ -60,7 +61,7 @@ pub async fn handle_commands<'a>(
 			println!("  [UP ARROW] - Replaces input with previous command");
 			println!("  [DOWN ARROW] - Replaces input with the latter command");
 			println!();
-			println!("  More information is in our documentation.");
+			println!("  More information is available in our documentation.");
 		}
 		//function to make sure user does not give wrong input
 		"sub" | "search" => {
@@ -101,7 +102,7 @@ pub async fn handle_commands<'a>(
 		//function to change the current subaccount in one command
 		x if x.starts_with("sub ") => {
 			let sub_to_search: String = x.split("sub ").collect();
-			let db_info = get_db_info().await.unwrap();
+			*db_info = get_db_info(false).await.unwrap();
 			match sub_to_search.as_str() {
 				"def" => {
 					//changes to default account (not a subaccount)
