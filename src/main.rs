@@ -1,6 +1,6 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
-#![feature(async_closure)]
+//#![feature(async_closure)]
 mod db;
 mod ftx_exchange;
 mod misc;
