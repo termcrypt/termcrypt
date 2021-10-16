@@ -3,9 +3,10 @@
 # termcrypt
 
 ![](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
-<img src="http://ForTheBadge.com/images/badges/built-with-love.svg" height="26"/>
+<img src="http://ForTheBadge.com/images/badges/built-with-love.svg" height="26"/> ![](https://img.shields.io/github/commit-activity/m/termcrypt/termcrypt)
 
 ![](https://img.shields.io/badge/license-AGPL--3.0%2B-green)
+![](https://img.shields.io/crates/v/termcrypt)
 ![](https://img.shields.io/badge/speed-like%20sonic-blue)
 
 A terminal-like interface for efficiently trading the market.
@@ -21,12 +22,6 @@ We hope you enjoy termcrypt :)
 
 [Our plans for features and fixes](https://github.com/termcrypt/termcrypt/projects).
 
-### Documentation
-
-For more information on what termcrypt can do and commands, visit [termcrypt.github.io](https://termcrypt.github.io)
-
-If you would like to contribute to documentation, visit [our docs repo](https://github.com/termcrypt/termcrypt.github.io).
-
 ### Features
 
 termcrypt has many utilities that are growing day by day that help interact with the market. Some of the features include:
@@ -39,6 +34,21 @@ termcrypt has many utilities that are growing day by day that help interact with
 For a more comprehensive list, run `help` or `h` inside of termcrypt.
 
 <img src="src/img/example.png" height="80"/>
+
+### Installation
+Installing termcrypt is simple and it uses ~<500MB of space because it requires dependencies to compile.
+
+1. Install rustup from [https://rustup.rs/](https://rustup.rs/) or by using another method if your platform is not supported.
+
+2. Run the command: `cargo install termcrypt` in a terminal. If you are on linux, you can use any terminal. If you are on windows, you can get windows terminal from the [windows store](), or from their [github](https://github.com/Microsoft/Terminal).
+
+3. In the terminal, run `termcrypt`. You should see it asking for API keys, followed by ascii art. If you have any troubles, make an [issue](https://github.com/termcrypt/termcrypt/issues).
+
+### Documentation
+
+For more information on what termcrypt can do and commands, visit [termcrypt.github.io](https://termcrypt.github.io)
+
+If you would like to contribute to documentation, visit [our docs repo](https://github.com/termcrypt/termcrypt.github.io).
 
 ### License
 
