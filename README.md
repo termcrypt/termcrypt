@@ -83,3 +83,4 @@ This section gives credit to people that have helped substantially in the develo
 
 - [fabianboesiger](https://github.com/fabianboesiger)
 - conan ⚡️
+- babdou
