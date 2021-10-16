@@ -38,7 +38,7 @@ async fn main() {
 	let opts = Options {
 		key: Some(db_info.ftx_pub_key.to_owned()),
 		secret: Some(db_info.ftx_priv_key.to_owned()),
-		subaccount: Some(subaccount.to_string()),
+		subaccount: if Some(subaccount.to_string()) == Some("def".to_string()) {None} else {Some(subaccount.to_string())},
 		endpoint: ftx::options::Endpoint::Com,
 	};
 	let mut api = Rest::new(opts.to_owned());
