@@ -1,6 +1,7 @@
-use chrono::{DateTime, Duration, NaiveTime, TimeZone, Utc};
-
 use anyhow::{bail, Error, Result};
+use chrono::{DateTime, Duration, NaiveTime, TimeZone, Utc};
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 
 use super::utils::{
 	boldt,
@@ -9,9 +10,6 @@ use super::utils::{
 	slimversion,
 	wideversion,
 };
-
-use rust_decimal::prelude::*;
-use rust_decimal_macros::dec;
 
 //use super::utils::boldt as boldt;
 

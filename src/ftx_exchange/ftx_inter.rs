@@ -1,15 +1,16 @@
-use ftx::{options::Options, rest::Account, rest::*};
-
 use anyhow::{bail, Error, Result};
-
+use chrono::Local;
 use dotenv::dotenv;
-
+use ftx::{options::Options, rest::Account, rest::*};
+use polodb_bson::mk_document;
+use polodb_core::Database;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 
+use super::super::db;
 use super::super::db::*;
 use super::super::misc;
-use super::super::utils::{askout as ask, boldt, yn};
+use super::super::utils::{askout as ask, boldt, round_dp_tz, yn};
 use super::ftx_advanced_orders::*;
 use super::ftx_utils::*;
 
@@ -75,15 +76,14 @@ pub async fn handle_commands<'a>(
 			println!("  1. Change default pair to current");
 			println!("  2. Change default subaccount to current");
 			let choice = ask("[OPTION NUMBER]", Some("defaultsoptionnumber".to_string()))?;
-			let db: sled::Db = sled::open(database_location().as_str())?;
 
 			match choice.as_str() {
 				"1" => {
-					insert_db_info_entry(&db, "default_pair", pair)?;
+					db_insert_config("default_pair", pair)?;
 					println!("  Changed default pair successfully");
 				}
 				"2" => {
-					insert_db_info_entry(&db, "default_sub", subaccount)?;
+					db_insert_config("default_sub", subaccount)?;
 					println!("  Changed default subaccount successfully");
 				}
 				_ => {
@@ -245,6 +245,8 @@ pub async fn handle_commands<'a>(
 		}
 		//initiate a market order
 		"o" | "order" => {
+			let mut db = Database::open(database_location().as_str()).unwrap();
+			let mut collection = db.collection("ftrades").unwrap();
 			let q_account = api.request(GetAccount).await?;
 			let q_market = api.request(GetMarket::new(pair.as_str())).await?;
 
@@ -437,6 +439,16 @@ pub async fn handle_commands<'a>(
 			println!("  main order type: {:?}", q_main_order.r#type);
 			println!();
 
+			let main_id = db_insert_ftrade(db::Trade {
+				_id: None,
+				timestamp_open: Local::now().timestamp().to_string().parse::<Decimal>()?,
+				filled: false,
+				risk,
+				main_id: q_main_order.id,
+				sl_id: None,
+				tp_id: None,
+			})?;
+
 			//STOPLOSS ORDER
 			println!("{}", boldt("Stoploss options"));
 			let sl_type;
@@ -477,6 +489,17 @@ pub async fn handle_commands<'a>(
 			println!("  Stop order id: {}", q_stop_order.id);
 			println!();
 
+			collection
+				.update(
+					Some(&mk_document! { "_id": main_id }),
+					&mk_document! {
+						"$set": mk_document! {
+							"sl_id": q_stop_order.id
+						}
+					},
+				)
+				.unwrap();
+
 			//TAKE-PROFIT ORDER
 			println!("{}", boldt("Take-profit options"));
 			let tp_type;
@@ -512,6 +535,17 @@ pub async fn handle_commands<'a>(
 				api,
 			)
 			.await?;
+
+			collection
+				.update(
+					Some(&mk_document! { "_id": main_id }),
+					&mk_document! {
+						"$set": mk_document! {
+							"tp_id": q_tp_order.id
+						}
+					},
+				)
+				.unwrap();
 
 			let sl_fees = calculate_fees(sl_ismarket, calculation.quantity, account);
 			let tp_fees = calculate_fees(tp_ismarket, calculation.quantity, account);
@@ -610,6 +644,16 @@ pub async fn handle_commands<'a>(
 		}
 		//gets balance of current subaccount
 		"bal" | "balance" => {
+			println!(
+				"{}",
+				boldt(
+					format!(
+						"Total subaccount value: {} USD",
+						round_dp_tz(account.total_account_value, 2)
+					)
+					.as_str()
+				)
+			);
 			match subaccount.as_str() {
 				//default account (no subaccount chosen)
 				"def" => {
@@ -676,8 +720,22 @@ pub async fn handle_commands<'a>(
 			println!("{:#?}", account);
 		}
 		//gets raw markets object
-		"rawmarkets" => {
-			println!("{:#?}", api.request(GetMarkets).await?);
+		"testi" => {
+			db_insert_ftrade(db::Trade {
+				_id: None,
+				timestamp_open: Local::now().timestamp().to_string().parse::<Decimal>()?,
+				filled: false,
+				risk: dec!(1.5),
+				main_id: 32432432432423,
+				sl_id: None,
+				tp_id: None,
+			})?;
+		}
+		"testa" => {
+			println!("{:#?}", db_get_ftrades()?);
+		}
+		"testw" => {
+			db_wipe_trades();
 		}
 		_ => (isrealcommand = false),
 	}

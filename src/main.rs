@@ -1,21 +1,19 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
-//#![feature(async_closure)]
 mod db;
 mod ftx_exchange;
 mod misc;
 mod utils;
+use ftx::{options::Options, rest::*};
 use ftx_exchange::*;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::env;
 use std::fs;
-
-use ftx::{options::Options, rest::*};
+use terminal_size::{terminal_size, Height, Width};
 
 use db::{get_db_info, history_location};
 
-use terminal_size::{terminal_size, Height, Width};
 static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Config {
@@ -27,6 +25,13 @@ pub struct Config {
 
 #[tokio::main]
 async fn main() {
+	//creates termcrypt data folder & history subfolder if does not exist
+	let _x = fs::create_dir_all(history_location().as_str());
+	match _x {
+		Ok(_x) => _x,
+		Err(_e) => (),
+	}
+
 	//initiates database
 	let mut db_info = get_db_info(true).await.unwrap();
 
@@ -38,7 +43,11 @@ async fn main() {
 	let opts = Options {
 		key: Some(db_info.ftx_pub_key.to_owned()),
 		secret: Some(db_info.ftx_priv_key.to_owned()),
-		subaccount: if Some(subaccount.to_string()) == Some("def".to_string()) {None} else {Some(subaccount.to_string())},
+		subaccount: if Some(subaccount.to_string()) == Some("def".to_string()) {
+			None
+		} else {
+			Some(subaccount.to_string())
+		},
 		endpoint: ftx::options::Endpoint::Com,
 	};
 	let mut api = Rest::new(opts.to_owned());
@@ -74,13 +83,6 @@ async fn main() {
 	//env::set_current_dir(&root);
 
 	let line_main_location = format!("{}main.txt", history_location().as_str());
-
-	//creates history directory and file if not made already
-	let _x = fs::create_dir_all(history_location().as_str());
-	match _x {
-		Ok(_x) => _x,
-		Err(_e) => (),
-	}
 
 	if !std::path::Path::new(&line_main_location.to_string()).exists() {
 		std::fs::File::create(line_main_location.to_string()).unwrap();
@@ -171,8 +173,6 @@ async fn main() {
 		if isrealcommand {
 			line_main.append_history(&line_main_location).unwrap();
 		}
-		//UPDATE DB
-		//db_info = get_db_info(false).await.unwrap();
 		loop_iteration += 1;
 	}
 }

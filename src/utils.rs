@@ -85,7 +85,7 @@ pub fn sideret(text: &str) {
 }
 
 pub fn wideversion() {
-	//print!("{}[2J", 27 as char);
+	print!("{}[2J", 27 as char);
 	println!();
 	println!("  _______ _______ ______ _______ ______ ______ ___ ___ ______ _______ ");
 	println!(" |_     _|    ___|   __ ⑊   |   |      |   __ ⑊   |   |   __ ⑊_     _|");

@@ -21,9 +21,11 @@ rust_decimal = "1.16"
 rust_decimal_macros = "1.16"
 rustyline = "9.0.0"
 terminal_size = "0.1.17"
-sled = "0.34"
 dirs = "4.0"
 futures = "0.3"
+polodb_core = "0.10.0"
+polodb_bson = "0.10.0"
+rand = "0.8.4"
 #spinners = "2.0.0"
 
 #Exchanges
