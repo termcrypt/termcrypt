@@ -12,7 +12,6 @@ repository = "https://github.com/termcrypt/termcrypt"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-scanln = "0.1.1"
 chrono = "0.4"
 ansi_term = "0.12.1"
 dotenv = "0.14.1"

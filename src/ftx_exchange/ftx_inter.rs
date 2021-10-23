@@ -208,18 +208,20 @@ pub async fn handle_commands<'a>(
 				ask_width = dec!(0)
 			};
 
+			let bgap = " ".repeat((bid_width / dec!(2)).to_usize().unwrap());
+			let agap = " ".repeat((ask_width / dec!(2)).to_usize().unwrap());
 			println!(
 				"{}{}",
-				" ".repeat((bid_width / dec!(2)).to_usize().unwrap()),
+				bgap,
 				boldt(format!("{} {}", "ORDERBOOK FOR", pair).as_str())
 			);
 
 			println!(
 				"{} BID {} {} ASK {}",
-				" ".repeat((bid_width / dec!(2)).to_usize().unwrap()),
-				" ".repeat((bid_width / dec!(2)).to_usize().unwrap()),
-				" ".repeat((ask_width / dec!(2)).to_usize().unwrap()),
-				" ".repeat((ask_width / dec!(2)).to_usize().unwrap())
+				bgap,
+				bgap,
+				agap,
+				agap
 			);
 
 			for (iters, _x) in q_orderbook.asks.iter().enumerate() {
@@ -245,8 +247,6 @@ pub async fn handle_commands<'a>(
 		}
 		//initiate a market order
 		"o" | "order" => {
-			let mut db = Database::open(database_location().as_str()).unwrap();
-			let mut collection = db.collection("ftrades").unwrap();
 			let q_account = api.request(GetAccount).await?;
 			let q_market = api.request(GetMarket::new(pair.as_str())).await?;
 
@@ -448,6 +448,10 @@ pub async fn handle_commands<'a>(
 				sl_id: None,
 				tp_id: None,
 			})?;
+
+			//open database after update so no conflicts
+			let mut db = Database::open(database_location().as_str()).unwrap();
+			let mut collection = db.collection("ftrades").unwrap();
 
 			//STOPLOSS ORDER
 			println!("{}", boldt("Stoploss options"));
