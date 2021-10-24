@@ -42,7 +42,7 @@ Installing termcrypt is simple and it uses ~<500MB of space because it requires 
 
 1. Install rustup from [https://rustup.rs/](https://rustup.rs/) or by using another method if your platform is not supported.
 
-2. Run the command: `cargo install termcrypt` in a terminal. If you are on linux, you can use any terminal. If you are on windows, you can get windows terminal from the [windows store](https://www.microsoft.com/en-gb/p/windows-terminal/9n0dx20hk701), or from their [github](https://github.com/Microsoft/Terminal).
+2. Run the command: `cargo install termcrypt` in a terminal. We recommend [alacritty](https://alacritty.org/) for linux, mac and windows. We also recommend [termux](https://termux.com/) for android and [newterm](https://github.com/hbang/NewTerm) for ios (untested).
 
 3. In the terminal, run `termcrypt`. You should see it asking for API keys, followed by ascii art. If you have any troubles, make an [issue](https://github.com/termcrypt/termcrypt/issues).
 
@@ -64,7 +64,14 @@ Because of this, we chose the AGPL-3.0-or-later license because it is one of the
 If you want to open a pull request, you need to follow the instructions in CONTRIBUTING.md
 
 ### Build
-Following commands require `git`, `rustc` and `cargo`
+#### Prerequisites
+Following commands require `git`, `rustc` and `cargo`. 
+
+`rustc` and `cargo` are installed by default with rustup.
+
+Make sure you have the latest rustc version by running `rustup -V`.
+
+#### Building
 
 Clone the repo and open the directory:
 ```sh
