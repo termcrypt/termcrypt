@@ -9,6 +9,8 @@
 ![](https://img.shields.io/crates/v/termcrypt)
 ![](https://img.shields.io/badge/speed-like%20sonic-blue)
 
+[<img src="src/img/xmr.gif" height="40"/>](https://termcrypt.github.io/donate/)
+
 A terminal-like interface for efficiently trading the market.
 
 Planned Exchanges termcrypt currently supports:
