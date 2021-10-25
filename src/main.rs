@@ -11,6 +11,7 @@ use rustyline::Editor;
 use std::env;
 use std::fs;
 use terminal_size::{terminal_size, Height, Width};
+use rust_decimal::prelude::*;
 
 use db::{get_db_info, history_location};
 
@@ -19,6 +20,7 @@ static VERSION: &str = env!("CARGO_PKG_VERSION");
 pub struct Config {
 	pub default_pair: String,
 	pub default_sub: String,
+	pub ratio_warn_num: Decimal,
 	pub ftx_pub_key: String,
 	pub ftx_priv_key: String,
 }

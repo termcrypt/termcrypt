@@ -1,6 +1,6 @@
 [package]
 name = "termcrypt"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["peepopoggers <72892531+peepopoggers@users.noreply.github.com>"]
 edition = "2018"
 license = "AGPL-3.0-or-later"
@@ -22,8 +22,8 @@ rustyline = "9.0.0"
 terminal_size = "0.1.17"
 dirs = "4.0"
 futures = "0.3"
-polodb_core = "0.10.0"
-polodb_bson = "0.10.0"
+polodb_core = "0.10.2"
+polodb_bson = "0.10.2"
 rand = "0.8.4"
 #spinners = "2.0.0"
 

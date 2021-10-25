@@ -27,6 +27,7 @@ pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 	//set data point variables to specified db / default values
 	let default_pair = get_dbinf_by_entry("default_pair", Some("BTC-PERP"), None, false)?;
 	let default_sub = get_dbinf_by_entry("default_sub", Some("def"), None, false)?;
+	let ratio_warn_num = get_dbinf_by_entry("ratio_warn_num", Some("1"), None, false)?.parse::<Decimal>()?;
 	let mut ftx_pub_key;
 	let mut ftx_priv_key;
 
@@ -72,6 +73,7 @@ pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 	Ok(super::Config {
 		default_pair,
 		default_sub,
+		ratio_warn_num,
 		ftx_pub_key,
 		ftx_priv_key,
 	})
@@ -123,16 +125,17 @@ pub fn get_dbinf_by_entry(
 }
 
 pub fn db_insert_config(key_name: &str, value: &str) -> Result<String, Error> {
-	let mut db = Database::open(database_location().as_str()).unwrap();
-	let mut collection = db.collection("config").unwrap();
-
 	let mut document = mk_document! {
 		"_key": key_name,
 		"value": value
 	};
 
+	let inside = db_inside(document.as_mut());
+	
+	let mut db = Database::open(database_location().as_str()).unwrap();
+	let mut collection = db.collection("config").unwrap();
 	//checks if key already has a value
-	if db_inside(document.as_mut()) {
+	if inside{
 		//updates the database entry with new values
 		collection
 			.update(

@@ -73,26 +73,41 @@ pub async fn handle_commands<'a>(
 		}
 		"def" | "defaults" => {
 			println!("{}", boldt("AVAILABLE DEFAULTS"));
-			println!("  1. Change default pair to current");
-			println!("  2. Change default subaccount to current");
+			println!("  1. Change default pair to current pair");
+			println!("  2. Change default subaccount to current subaccount");
 			let choice = ask("[OPTION NUMBER]", Some("defaultsoptionnumber".to_string()))?;
 
 			match choice.as_str() {
 				"1" => {
+					//let pair_to_check = ask("", None)?;
 					db_insert_config("default_pair", pair)?;
 					println!("  Changed default pair successfully");
 				}
 				"2" => {
+					//let subaccount_to_check = ask("", None)?;
 					db_insert_config("default_sub", subaccount)?;
 					println!("  Changed default subaccount successfully");
-				}
+				},
 				_ => {
 					println!("  {}", boldt("!! Not a choice !!"));
 				}
 			}
 		}
 		"conf" | "config" => {
-			//
+			println!("  1. Change ratio warning number");
+			let choice = ask("[OPTION NUMBER]", Some("defaultsoptionnumber".to_string()))?;
+
+			match choice.as_str() {
+				"1" => {
+					println!();
+					let new_ratio = ask("[New ratio warning number]", None)?.parse::<Decimal>()?;
+					db_insert_config("ratio_warn_num", &new_ratio.to_string())?;
+					println!("  Changed warning ratio successfully");
+				},
+				_ => {
+					println!("  {}", boldt("!! Not a choice !!"));
+				}
+			}
 		}
 		//change the current pair
 		x if x.starts_with("pair ") => {
@@ -407,7 +422,7 @@ pub async fn handle_commands<'a>(
 			println!("{}", boldt("Confirm Values?"));
 			yn(ask("(y/n)", None)?)?;
 
-			if calculation.tpslratio < dec!(1) {
+			if calculation.tpslratio < db_info.ratio_warn_num {
 				println!();
 				println!("{}", boldt("The SLTP ratio is not favourable. Proceed?"));
 				yn(ask("(y/n)", None)?)?;

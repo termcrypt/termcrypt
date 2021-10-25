@@ -18,6 +18,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
+name = "ahash"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+dependencies = [
+ "getrandom",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -544,6 +555,9 @@ name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+dependencies = [
+ "ahash",
+]
 
 [[package]]
 name = "hermit-abi"
@@ -731,6 +745,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "lru"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c748cfe47cb8da225c37595b3108bea1c198c84aaae8ea0ba76d01dda9fc803"
+dependencies = [
+ "hashbrown",
 ]
 
 [[package]]
@@ -995,21 +1018,22 @@ checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 
 [[package]]
 name = "polodb_bson"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b1f4443b5424437e0f4c94aeaf08651b682c2ef8cb6c9e79bbca2450da61e4e"
+checksum = "7842919a6f43032397a616807a08639ac37ad701f754210dc5b115c73a96427e"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "polodb_core"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "162fa25552711e2913e63313ec0c6db04c123e5b8e6baacb1584374e951b723a"
+checksum = "c6dfec8991aef872e1cbefe0aea725215b0508b7b97277f45b94ae813156abfc"
 dependencies = [
  "crc64fast",
  "libc",
+ "lru",
  "polodb_bson",
  "winapi",
 ]
@@ -1444,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "termcrypt"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "ansi_term",
  "anyhow",
