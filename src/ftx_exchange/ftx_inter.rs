@@ -72,6 +72,8 @@ pub async fn handle_commands<'a>(
 			);
 		}
 		"def" | "defaults" => {
+			let mut database = Database::open(database_location().as_str()).unwrap();
+
 			println!("{}", boldt("AVAILABLE DEFAULTS"));
 			println!("  1. Change default pair to current pair");
 			println!("  2. Change default subaccount to current subaccount");
@@ -80,20 +82,22 @@ pub async fn handle_commands<'a>(
 			match choice.as_str() {
 				"1" => {
 					//let pair_to_check = ask("", None)?;
-					db_insert_config("default_pair", pair)?;
+					db_insert_config(&mut database, "default_pair", pair)?;
 					println!("  Changed default pair successfully");
 				}
 				"2" => {
 					//let subaccount_to_check = ask("", None)?;
-					db_insert_config("default_sub", subaccount)?;
+					db_insert_config(&mut database, "default_sub", subaccount)?;
 					println!("  Changed default subaccount successfully");
-				},
+				}
 				_ => {
 					println!("  {}", boldt("!! Not a choice !!"));
 				}
 			}
 		}
 		"conf" | "config" => {
+			let mut database = Database::open(database_location().as_str()).unwrap();
+
 			println!("  1. Change ratio warning number");
 			let choice = ask("[OPTION NUMBER]", Some("defaultsoptionnumber".to_string()))?;
 
@@ -101,9 +105,9 @@ pub async fn handle_commands<'a>(
 				"1" => {
 					println!();
 					let new_ratio = ask("[New ratio warning number]", None)?.parse::<Decimal>()?;
-					db_insert_config("ratio_warn_num", &new_ratio.to_string())?;
-					println!("  Changed warning ratio successfully");
-				},
+					db_insert_config(&mut database, "ratio_warn_num", &new_ratio.to_string())?;
+					println!("  Changed ratio warning number successfully");
+				}
 				_ => {
 					println!("  {}", boldt("!! Not a choice !!"));
 				}
@@ -231,13 +235,7 @@ pub async fn handle_commands<'a>(
 				boldt(format!("{} {}", "ORDERBOOK FOR", pair).as_str())
 			);
 
-			println!(
-				"{} BID {} {} ASK {}",
-				bgap,
-				bgap,
-				agap,
-				agap
-			);
+			println!("{} BID {} {} ASK {}", bgap, bgap, agap, agap);
 
 			for (iters, _x) in q_orderbook.asks.iter().enumerate() {
 				let mut ob_line_bids = format!(
@@ -456,12 +454,14 @@ pub async fn handle_commands<'a>(
 
 			let main_id = db_insert_ftrade(db::Trade {
 				_id: None,
+				exchange_id: None,
 				timestamp_open: Local::now().timestamp().to_string().parse::<Decimal>()?,
 				filled: false,
 				risk,
 				main_id: q_main_order.id,
 				sl_id: None,
 				tp_id: None,
+				exchange: Exchange::Ftx,
 			})?;
 
 			//open database after update so no conflicts
@@ -742,12 +742,14 @@ pub async fn handle_commands<'a>(
 		"testi" => {
 			db_insert_ftrade(db::Trade {
 				_id: None,
+				exchange_id: None,
 				timestamp_open: Local::now().timestamp().to_string().parse::<Decimal>()?,
 				filled: false,
 				risk: dec!(1.5),
 				main_id: 32432432432423,
 				sl_id: None,
 				tp_id: None,
+				exchange: Exchange::Ftx,
 			})?;
 		}
 		"testa" => {

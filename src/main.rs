@@ -6,12 +6,12 @@ mod misc;
 mod utils;
 use ftx::{options::Options, rest::*};
 use ftx_exchange::*;
+use rust_decimal::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::env;
 use std::fs;
 use terminal_size::{terminal_size, Height, Width};
-use rust_decimal::prelude::*;
 
 use db::{get_db_info, history_location};
 
