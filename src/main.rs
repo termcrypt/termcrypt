@@ -55,7 +55,7 @@ async fn main() {
 	let mut api = Rest::new(opts.to_owned());
 
 	//gets user account object
-	let mut q_account = api.request(GetAccount).await.unwrap();
+	let mut q_account = api.request(GetAccount {}).await.unwrap();
 
 	//starts websockets
 	tokio::spawn(ftx_ws::ftx_websocket(opts));

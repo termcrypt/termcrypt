@@ -8,6 +8,7 @@ use rust_decimal::prelude::*;
 
 use super::super::db::*;
 use super::super::utils::*;
+use super::ftx_utils::*;
 
 pub async fn ftx_websocket(options: Options) -> Result<()> {
 	let mut websocket = Ws::connect(options).await?;
@@ -24,12 +25,12 @@ pub async fn ftx_websocket(options: Options) -> Result<()> {
 				//prints fill to user
 				sideret(
 					format!(
-						"{:?} - Fill ({:?}) at: {} with size: {}",
-						fill.market, fill.side, fill.price, fill.size
+						"{:?} - Fill ({:?}) at: {} with size: {} {}",
+						fill.market, fill.side, fill.price, fill.price*fill.size, ftx_getsuffixsymbol(&fill.market)
 					)
 					.as_str(),
 				);
-				println!("{:#?}", fill);
+				//println!("{:#?}", fill);
 
 				//updates entry to fill if any
 				for item in db_get_ftrades().unwrap() {
@@ -46,7 +47,7 @@ pub async fn ftx_websocket(options: Options) -> Result<()> {
 								Some(&mk_document! { "_id": id }),
 								&mk_document! {
 									"$set": mk_document! {
-										"filled": true
+										"filled": "true"
 									}
 								},
 							)

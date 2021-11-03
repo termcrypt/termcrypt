@@ -73,6 +73,7 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 			if (entry > o.price && o.islong)
 				|| (entry < o.price && !o.islong) && !o.isorderbook =>
 		{
+			println!("debug: trigger");
 			api.request(PlaceTriggerOrder {
 				market: o.pair.to_string(),
 				side: if o.islong {
@@ -100,6 +101,7 @@ pub async fn o_now_order(mut o: NowOrder, api: &mut Rest) -> Result<ftx::rest::O
 		_ => {
 			//for immediate market orders
 			if o.ismarket {
+				println!("debug: ismarket");
 				api.request(PlaceOrder {
 					market: o.pair.to_string(),
 					side: if o.islong {

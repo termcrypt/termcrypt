@@ -52,7 +52,7 @@ pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 		});
 
 		if checkapi {
-			match api.request(GetAccount).await {
+			match api.request(GetAccount {}).await {
 				Ok(_x) => break,
 				Err(e) => {
 					println!();
@@ -205,9 +205,9 @@ pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
 	collection
 		.insert(&mut mk_document! {
 			"_id": id,
-			"exchange_id": if td.sl_id == None {"".to_string()} else {td.exchange_id.unwrap().to_string()},
+			"exchange_id": if td.exchange_id == None {"".to_string()} else {td.exchange_id.unwrap().to_string()},
 			"timestamp_open": td.timestamp_open.to_string(),
-			"filled": td.filled,
+			"filled": if td.filled {"true"} else {"false"},
 			"risk": td.risk.to_string(),
 			"main_id": td.main_id,
 			"sl_id": if td.sl_id == None {0} else {td.sl_id.unwrap()},
@@ -230,12 +230,14 @@ pub fn _db_get_ftrade(id: i64) -> Result<Option<Trade>, Error> {
 			let sl_id = doc.get("sl_id").unwrap().unwrap_int();
 			let tp_id = doc.get("tp_id").unwrap().unwrap_int();
 			let exchange = doc.get("exchange").unwrap().unwrap_string();
+			let exchange_id = doc.get("exchange_id").unwrap().unwrap_string();
+			let filled = doc.get("filled").unwrap().unwrap_string();
 
 			Ok(Some(Trade {
 				_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<Decimal>()?),
-				exchange_id: Some(doc.get("exchange_id").unwrap().unwrap_string().parse::<Decimal>()?),
+				exchange_id: if exchange_id == "" { None } else {Some(exchange_id.parse::<Decimal>()?)},
 				timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<Decimal>()?/*, "%s")?*/,
-				filled: doc.get("filled").unwrap().unwrap_boolean(),
+				filled: if filled == "true" {true} else {false},
 				risk: doc.get("risk").unwrap().unwrap_string().parse::<Decimal>()?,
 				main_id: doc.get("main_id").unwrap().unwrap_int() as u64,
 				sl_id: if sl_id == 0 {None} else {Some(sl_id as u64)},
@@ -269,13 +271,15 @@ pub fn db_get_ftrades() -> Result<Vec<Trade>, Error> {
 		let sl_id = doc.get("sl_id").unwrap().unwrap_int();
 		let tp_id = doc.get("tp_id").unwrap().unwrap_int();
 		let exchange = doc.get("exchange").unwrap().unwrap_string();
+		let exchange_id = doc.get("exchange_id").unwrap().unwrap_string();
+		let filled = doc.get("filled").unwrap().unwrap_string();
 
 		trade_array.push(
 			Trade {
 				_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<Decimal>()?),
-				exchange_id: Some(doc.get("exchange_id").unwrap().unwrap_string().parse::<Decimal>()?),
+				exchange_id: if exchange_id == "" { None } else {Some(exchange_id.parse::<Decimal>()?)},
 				timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<Decimal>()?/*, "%s")?*/,
-				filled: doc.get("filled").unwrap().unwrap_boolean(),
+				filled: if filled == "true" {true} else {false},
 				risk: doc.get("risk").unwrap().unwrap_string().parse::<Decimal>()?,
 				main_id: doc.get("main_id").unwrap().unwrap_int() as u64,
 				sl_id: if sl_id == 0 {None} else {Some(sl_id as u64)},

@@ -30,5 +30,5 @@ rand = "0.8.4"
 #Exchanges
 
 #ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
-ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main", version = "0.4.1" }
+ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main", version = "0.4.3" }
 #ftx = { path = "./src/ftxtest" }

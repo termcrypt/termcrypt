@@ -135,7 +135,7 @@ pub async fn handle_commands<'a>(
 					});
 				}
 				_ => {
-					let q_subaccounts = api.request(GetSubaccounts).await?;
+					let q_subaccounts = api.request(GetSubaccounts {}).await?;
 
 					let mut did_find = false;
 					//searches subaccounts by nickname for user choice
@@ -164,7 +164,7 @@ pub async fn handle_commands<'a>(
 			let raw_lev_choice: String = x.split("lev ").collect();
 			let lev_choice: u32 = raw_lev_choice.parse::<u32>()?;
 
-			let q_account = api.request(GetAccount).await?;
+			let q_account = api.request(GetAccount {}).await?;
 			api.request(ChangeAccountLeverage::new(lev_choice)).await?;
 
 			println!("CHANGE: {} -> {}", q_account.leverage, lev_choice);
@@ -174,7 +174,7 @@ pub async fn handle_commands<'a>(
 		x if x.starts_with("search ") => {
 			//grabs second part of command to search for
 			let to_search: String = x.split("search ").collect();
-			let markets = api.request(GetMarkets).await?;
+			let markets = api.request(GetMarkets {}).await?;
 			println!();
 			let mut matched_count: i32 = 0;
 			//loop over all markets
@@ -260,7 +260,7 @@ pub async fn handle_commands<'a>(
 		}
 		//initiate a market order
 		"o" | "order" => {
-			let q_account = api.request(GetAccount).await?;
+			let q_account = api.request(GetAccount {}).await?;
 			let q_market = api.request(GetMarket::new(pair.as_str())).await?;
 
 			let mut total_liquid: Decimal = dec!(0);
@@ -279,7 +279,7 @@ pub async fn handle_commands<'a>(
 
 			match subaccount.as_str() {
 				"def" => {
-					let q_balances = api.request(GetWalletBalances).await?;
+					let q_balances = api.request(GetWalletBalances {}).await?;
 					for balance in q_balances {
 						if quote_currency == balance.coin {
 							found_currency = true;
@@ -341,6 +341,55 @@ pub async fn handle_commands<'a>(
 
 			if (q_account.leverage * risk) > dec!(100) {
 				bail!("You are at risk of liquidation so the trade cannot take place. Check leverage and risk.");
+			}
+			
+			println!();
+			//STOPLOSS ORDER
+			println!("  {}", boldt("Stoploss options"));
+			let sl_type;
+			let sl_ismarket: bool;
+			loop {
+				let sl_type_in = ask("  SL [m]", Some("orderstoplosstype".to_string()))?;
+				match sl_type_in.to_uppercase().as_str() {
+					"M" => {
+						sl_type = SLType::M;
+						sl_ismarket = true;
+						break;
+					}
+					"Hs" => {
+						sl_type = SLType::Hs;
+						sl_ismarket = false;
+						break;
+					}
+					_ => {
+						println!("You must choose a stoploss type");
+						continue;
+					}
+				}
+			}
+
+			//TAKE-PROFIT ORDER
+			println!("  {}", boldt("Take-profit options"));
+			let tp_type;
+			let tp_ismarket;
+			loop {
+				let tp_type_in = ask("  TP [m]", Some("ordertakeprofittype".to_string()))?;
+				match tp_type_in.to_uppercase().as_str() {
+					"M" => {
+						tp_type = TPType::M;
+						tp_ismarket = true;
+						break;
+					}
+					"ob" => {
+						tp_type = TPType::Ob;
+						tp_ismarket = false;
+						break;
+					}
+					_ => {
+						println!("Err: You must choose a take-profit type!");
+						continue;
+					}
+				}
 			}
 
 			let values = misc::OrderCalcEntry {
@@ -448,7 +497,6 @@ pub async fn handle_commands<'a>(
 			)
 			.await?;
 
-			println!("  main order id: {}", q_main_order.id);
 			println!("  main order type: {:?}", q_main_order.r#type);
 			println!();
 
@@ -468,30 +516,6 @@ pub async fn handle_commands<'a>(
 			let mut db = Database::open(database_location().as_str()).unwrap();
 			let mut collection = db.collection("ftrades").unwrap();
 
-			//STOPLOSS ORDER
-			println!("{}", boldt("Stoploss options"));
-			let sl_type;
-			let sl_ismarket: bool;
-			loop {
-				let sl_type_in = ask("SL [m]", Some("orderstoplosstype".to_string()))?;
-				match sl_type_in.to_uppercase().as_str() {
-					"M" => {
-						sl_type = SLType::M;
-						sl_ismarket = true;
-						break;
-					}
-					"Hs" => {
-						sl_type = SLType::Hs;
-						sl_ismarket = false;
-						break;
-					}
-					_ => {
-						println!("You must choose a stoploss type");
-						continue;
-					}
-				}
-			}
-
 			let q_stop_order = o_sl_order(
 				SLOrder {
 					pair: pair.to_string(),
@@ -504,10 +528,6 @@ pub async fn handle_commands<'a>(
 			)
 			.await?;
 
-			println!();
-			println!("  Stop order id: {}", q_stop_order.id);
-			println!();
-
 			collection
 				.update(
 					Some(&mk_document! { "_id": main_id }),
@@ -518,30 +538,6 @@ pub async fn handle_commands<'a>(
 					},
 				)
 				.unwrap();
-
-			//TAKE-PROFIT ORDER
-			println!("{}", boldt("Take-profit options"));
-			let tp_type;
-			let tp_ismarket;
-			loop {
-				let tp_type_in = ask("TP [m]", Some("ordertakeprofittype".to_string()))?;
-				match tp_type_in.to_uppercase().as_str() {
-					"M" => {
-						tp_type = TPType::M;
-						tp_ismarket = true;
-						break;
-					}
-					"ob" => {
-						tp_type = TPType::Ob;
-						tp_ismarket = false;
-						break;
-					}
-					_ => {
-						println!("Err: You must choose a take-profit type!");
-						continue;
-					}
-				}
-			}
 
 			let q_tp_order = o_tp_order(
 				TPOrder {
@@ -569,8 +565,6 @@ pub async fn handle_commands<'a>(
 			let sl_fees = calculate_fees(sl_ismarket, calculation.quantity, account);
 			let tp_fees = calculate_fees(tp_ismarket, calculation.quantity, account);
 
-			println!();
-			println!("  Take-profit order id: {}", q_tp_order.id);
 			println!();
 			println!(
 				"  SL Fees: {} {} ({}% of sub)",
@@ -601,12 +595,12 @@ pub async fn handle_commands<'a>(
 		}
 		//gets current account leverage
 		"lev" => {
-			let q_account = api.request(GetAccount).await?;
+			let q_account = api.request(GetAccount {}).await?;
 			println!("  Current Leverage: {}", q_account.leverage);
 		}
 		//lists all subaccounts
 		"subs" => {
-			let q_subaccounts = api.request(GetSubaccounts).await?;
+			let q_subaccounts = api.request(GetSubaccounts {}).await?;
 
 			let mut sub_counter: i32 = 0;
 			for sub_acc in &q_subaccounts {
@@ -626,7 +620,7 @@ pub async fn handle_commands<'a>(
 			//format parts into temp_pair
 			temp_pair = ftx_formattedpair([prefix.as_str(), suffix.as_str()]);
 
-			let q_markets = api.request(GetMarkets).await?;
+			let q_markets = api.request(GetMarkets {}).await?;
 			let mut isrealpair: bool = false;
 
 			for market in &q_markets {
@@ -676,7 +670,7 @@ pub async fn handle_commands<'a>(
 			match subaccount.as_str() {
 				//default account (no subaccount chosen)
 				"def" => {
-					let q_balances = api.request(GetWalletBalances).await?;
+					let q_balances = api.request(GetWalletBalances {}).await?;
 					println!("[{} Balance types]", q_balances.len());
 					for balance in &q_balances {
 						println!("  {}", boldt(&balance.coin));
@@ -721,21 +715,21 @@ pub async fn handle_commands<'a>(
 		}
 		//gets list of all markets (including futures)
 		"allmarkets" => {
-			let q_markets = api.request(GetMarkets).await?;
+			let q_markets = api.request(GetMarkets {}).await?;
 			for market in &q_markets {
 				print!("{} | ", market.name)
 			}
 		}
 		//gets list of all futures
 		"allfutures" => {
-			let q_futures = api.request(GetFutures).await?;
+			let q_futures = api.request(GetFutures {}).await?;
 			for future in &q_futures {
 				print!("{} | ", future.name)
 			}
 		}
 		//gets account object
 		"account" => {
-			*account = api.request(GetAccount).await?;
+			*account = api.request(GetAccount {}).await?;
 			println!("{:#?}", account);
 		}
 		//gets raw markets object
