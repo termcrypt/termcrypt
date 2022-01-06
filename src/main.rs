@@ -1,11 +1,12 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
+mod bybit_exchange;
 mod db;
-mod ftx_exchange;
 mod misc;
 mod utils;
-use ftx::{options::Options, rest::*};
-use ftx_exchange::*;
+use bybit::{http};
+use bybit_exchange::{bybit_inter};
+//use ftx::{options::Options, rest::*};
 use rust_decimal::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
@@ -18,11 +19,11 @@ use db::{get_db_info, history_location};
 static VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Config {
-	pub default_pair: String,
-	pub default_sub: String,
-	pub ratio_warn_num: Decimal,
-	pub ftx_pub_key: String,
-	pub ftx_priv_key: String,
+	pub bybit_default_pair: String,
+	pub bybit_default_sub: String,
+	pub bybit_pub_key: String,
+	pub bybit_priv_key: String,
+	pub ratio_warn_num: f64,
 }
 
 #[tokio::main]
@@ -38,92 +39,78 @@ async fn main() {
 	let mut db_info = get_db_info(true).await.unwrap();
 
 	//default variables
-	let mut pair: String = db_info.default_pair.to_string();
-	let mut subaccount: String = db_info.default_sub.to_string();
+	let mut pair: String = db_info.bybit_default_pair.to_string();
+	let mut subaccount: String = db_info.bybit_default_sub.to_string();
 
-	//add check for valid keys later
-	let opts = Options {
-		key: Some(db_info.ftx_pub_key.to_owned()),
-		secret: Some(db_info.ftx_priv_key.to_owned()),
-		subaccount: if Some(subaccount.to_string()) == Some("def".to_string()) {
-			None
-		} else {
-			Some(subaccount.to_string())
-		},
-		endpoint: ftx::options::Endpoint::Com,
-	};
-	let mut api = Rest::new(opts.to_owned());
-
-	//gets user account object
-	let mut q_account = api.request(GetAccount {}).await.unwrap();
+	let mut bybit_api = http::Client::new(
+		http::MAINNET_BYBIT,
+		&db_info.bybit_pub_key,
+		&db_info.bybit_priv_key,
+	)
+	.unwrap();
 
 	//starts websockets
-	tokio::spawn(ftx_ws::ftx_websocket(opts));
+	//tokio::spawn(ftx_ws::ftx_websocket(opts));
 
 	//gets terminal size
 	let size = terminal_size();
-	let mut wide = true;
+	let mut terminal_is_wide = true;
 
 	//wide if width is more than 70 characters
 	if let Some((Width(width), Height(_h))) = size {
 		if width < 70 {
-			wide = false;
+			terminal_is_wide = false;
 		}
 	} else {
-		wide = false
+		terminal_is_wide = false
 	}
 
 	//outputs version and ascii art
-	if wide {
+	print!("{}[2J", 27 as char);
+	if terminal_is_wide {
 		utils::wideversion();
 	} else {
 		utils::slimversion();
 	};
 	println!();
-	//let loc = history_location();
-	//let root = Path::new(&loc);
-	//env::set_current_dir(&root);
 
 	let line_main_location = format!("{}main.txt", history_location().as_str());
-
 	if !std::path::Path::new(&line_main_location.to_string()).exists() {
 		std::fs::File::create(line_main_location.to_string()).unwrap();
 	}
-
 	let mut line_main = Editor::<()>::new();
-
 	line_main.load_history(&line_main_location).unwrap();
-
-	//println!("{}", line_main_location.as_str());
 
 	let mut loop_iteration: i32 = 1;
 
 	loop {
 		//Start of loop
 		//Takes input from user through terminal-like interface*/
-		let mut isrealcommand = false;
+		let mut is_real_command = false;
 		let read_line =
 			line_main.readline(format!("[{}]({})> ", subaccount.as_str(), pair.as_str()).as_str());
 
 		match read_line {
 			Ok(read_line) => {
+				//add command to command history
 				line_main.add_history_entry(read_line.as_str());
-				//ftx command handling
-				match ftx_inter::handle_commands(
-					//make this a struct one day lazy ass
-					read_line.as_str(),
-					&mut subaccount,
-					&mut pair,
-					&mut api,
-					&mut q_account,
-					wide,
-					&mut db_info,
-				)
+				
+				//command handling
+				match bybit_inter::handle_commands(bybit_inter::CommandHandling{
+					//make this a struct one day
+					command_input: read_line.as_str(),
+					current_sub_account: &mut subaccount,
+					current_pair: &mut pair,
+					bybit_api: &mut bybit_api,
+					//&mut q_account,
+					_terminal_is_wide: &mut terminal_is_wide,
+					database_info: &mut db_info,
+				})
 				.await
 				{
 					Ok(x) => {
-						if !isrealcommand && x {
-							isrealcommand = true
+						if !is_real_command && x {
+							is_real_command = true
 						}
 					}
 					Err(e) => {
@@ -133,19 +120,20 @@ async fn main() {
 						continue;
 					}
 				};
+
 				//miscellaneous command handling
 				match misc::handle_commands(
-					//make this a struct one day lazy ass
+					//make this a struct one day
 					read_line.as_str(),
-					wide,
+					&mut terminal_is_wide,
 					loop_iteration,
 					//&mut db_info,
 				)
 				.await
 				{
 					Ok(x) => {
-						if !isrealcommand && x {
-							isrealcommand = true
+						if x {
+							is_real_command = true
 						}
 					}
 					Err(e) => {
@@ -172,7 +160,7 @@ async fn main() {
 				break;
 			}
 		}
-		if isrealcommand {
+		if is_real_command {
 			line_main.append_history(&line_main_location).unwrap();
 		}
 		loop_iteration += 1;

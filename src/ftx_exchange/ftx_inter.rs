@@ -503,7 +503,7 @@ pub async fn handle_commands<'a>(
 			let main_id = db_insert_ftrade(db::Trade {
 				_id: None,
 				exchange_id: None,
-				timestamp_open: Local::now().timestamp().to_string().parse::<Decimal>()?,
+				timestamp_open: Utc::now().timestamp().to_string().parse::<Decimal>()?,
 				filled: false,
 				risk,
 				main_id: q_main_order.id,
@@ -650,7 +650,7 @@ pub async fn handle_commands<'a>(
 		}
 		//gets the price of the current pair
 		"p" | "price" => {
-			let q_market = api.request(GetMarket::new(pair.as_str())).await?;
+			let q_market = api.request(GetMarket::new(pair.as_str())).await?.tickers();
 			println!("  Mid: {}", q_market.price);
 			println!("  Ask: {}", q_market.ask);
 			println!("  Bid: {}", q_market.bid);

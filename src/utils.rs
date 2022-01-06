@@ -54,8 +54,8 @@ pub fn askout(prefix: &str, file_name: Option<String>) -> Result<String, Error> 
 }
 
 pub fn yn(text: String) -> Result<(), Error> {
-	match text.as_str() {
-		"y" | "yes" | "Y" | "YES" => {
+	match text.to_uppercase().as_str() {
+		"Y" | "YES" => {
 			println!("  HIT: Confirmed");
 			Ok(())
 		}
@@ -77,7 +77,7 @@ pub fn round_dp_tz(num: Decimal, places: u32) -> Decimal {
 	num.round_dp_with_strategy(places, RoundingStrategy::ToZero)
 }
 
-pub fn sideret(text: &str) {
+pub fn _sideret(text: &str) {
 	println!();
 	println!("{}", "_".repeat(text.len()));
 	println!("{}", boldt(text));
@@ -85,20 +85,32 @@ pub fn sideret(text: &str) {
 }
 
 pub fn wideversion() {
-	print!("{}[2J", 27 as char);
 	println!();
 	println!("  _______ _______ ______ _______ ______ ______ ___ ___ ______ _______ ");
 	println!(" |_     _|    ___|   __ ⑊   |   |      |   __ ⑊   |   |   __ ⑊_     _|");
 	println!("   |   | |    ___|      <       |   ---|      <⑊     /|    __/ |   |  ");
 	println!("   |___| |_______|___|__|__|_|__|______|___|__| |___| |___|    |___|  ");
 	println!();
-	println!("  v{}. License: 🟢 AGPL3+", super::VERSION);
+	println!("  v{} License: 🟢 AGPL3+                            {}", super::VERSION, chrono::Local::now().format("[Now] %H:%M:%S"));
 }
 
 pub fn slimversion() {
-	print!("{}[2J", 27 as char);
 	println!();
 	println!("  {}", boldt("<termcrypt>"));
 	println!();
-	println!("  v{}. License: 🟢 AGPL3+", super::VERSION);
+	println!("  v{} License: 🟢 AGPL3+", super::VERSION);
+}
+
+//blank line function
+pub fn bl() {
+	println!();
+}
+
+//multiple blank lines function
+pub fn mbl(count: i32) {
+	let mut i = 0;
+	while i < count {
+		println!();
+		i += 1
+	}
 }

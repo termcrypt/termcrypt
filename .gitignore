@@ -21,3 +21,5 @@ target/
 db/
 
 src/ftxtest/
+
+.programmernotes.txt

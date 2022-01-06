@@ -1,6 +1,6 @@
 [package]
 name = "termcrypt"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["peepopoggers <72892531+peepopoggers@users.noreply.github.com>"]
 edition = "2018"
 license = "AGPL-3.0-or-later"
@@ -30,5 +30,10 @@ rand = "0.8.4"
 #Exchanges
 
 #ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
-ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main", version = "0.4.3" }
 #ftx = { path = "./src/ftxtest" }
+ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main", version = "0.4.3" }
+
+#[dependencies.bybit]
+#git = "https://github.com/wassup-/bybit-rs.git"
+#git = "https://github.com/peepopoggers/bybit-rs.git"
+bybit = { path = "../bybit-rs" }
