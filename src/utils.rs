@@ -107,7 +107,7 @@ pub fn bl() {
 }
 
 //multiple blank lines function
-pub fn mbl(count: i32) {
+pub fn _mbl(count: i32) {
 	let mut i = 0;
 	while i < count {
 		println!();

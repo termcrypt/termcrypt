@@ -7,7 +7,7 @@ mod utils;
 use bybit::{http};
 use bybit_exchange::{bybit_inter};
 //use ftx::{options::Options, rest::*};
-use rust_decimal::prelude::*;
+
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::env;

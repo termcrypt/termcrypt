@@ -19,7 +19,7 @@ use super::utils::{
 //use super::utils::boldt as boldt;
 
 //Command Handling
-pub async fn handle_commands<'a>(x: &str, wide: &'a mut bool, loop_iteration: i32) -> Result<bool, Error> {
+pub async fn handle_commands(x: &str, wide: &mut bool, loop_iteration: i32) -> Result<bool, Error> {
 	let mut isrealcommand = true;
 	match x {
 		//lists all commands
@@ -253,11 +253,11 @@ pub fn calculate_order(ov: OrderCalcEntry) -> Result<OrderCalcExit, Error> {
 	//Checks if parameters are correct
 	//More should be added here for more cases
 
-	if !(ov.risk <= 100.0)
-		&& (ov.stoploss - ov.takeprofit).abs() > error_margin
-		&& (ov.stoploss - ov.entry).abs() > error_margin
-		&& (ov.takeprofit - ov.entry).abs() > error_margin
-		&& ov.risk >= 0.1
+	if (ov.risk > 100.0)
+		||(ov.stoploss - ov.takeprofit).abs() < error_margin
+		||(ov.stoploss - ov.entry).abs() < error_margin
+		||(ov.takeprofit - ov.entry).abs() < error_margin
+		|| ov.risk < 0.1
 	{
 		bail!("Invalid parameters (error in calculating order size) - Check your inputs");
 	}

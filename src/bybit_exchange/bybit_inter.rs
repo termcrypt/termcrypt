@@ -1,13 +1,13 @@
 use anyhow::{bail, Error as AnyHowError, Result};
-use bybit::{http, rest::*, Result as BybitResult, OrderType, Side, TimeInForce, Symbol};
-use rust_decimal::prelude::*;
+use bybit::{http, rest::*, OrderType, Side, TimeInForce};
+
 use chrono::{Utc};
-use rust_decimal_macros::dec;
+
 use bybit::Error;
 use polodb_core::Database;
 
 use super::super::misc;
-use super::super::utils::{askout as ask, boldt, round_dp_tz, yn, bl};
+use super::super::utils::{askout as ask, boldt, yn, bl};
 use super::bybit_utils::*;
 use super::bybit_advanced_orders::*;
 use super::super::db;
@@ -31,7 +31,6 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 	let api = ch.bybit_api;
 	let _is_wide = ch._terminal_is_wide;
 	let db_info = ch.database_info;
-
 	let mut is_real_command = true;
 	//handles the command given by the user
 	match x {
@@ -198,7 +197,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			let last_price = ticker.last_price.parse::<f64>()?;
 
 			let q_symbols = api.fetch_symbols().await?;
-			let symbol_info = q_symbols.symbols().into_iter().find(|symbol| symbol.alias == pair.to_owned()).unwrap();
+			let symbol_info = q_symbols.symbols().into_iter().find(|symbol| symbol.alias == *pair).unwrap();
 			let min_qty = symbol_info.lot_size_filter.min_trading_qty;
 			let qty_step = symbol_info.lot_size_filter.qty_step;
 
@@ -230,7 +229,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			let calculation: misc::OrderCalcExit = misc::calculate_order(values)?;
 
 			//real quantity calculation
-			let mut qty_to_buy: f64 = 0.0;
+			let mut qty_to_buy: f64;
 			if pair.ends_with("USDT") {
 				qty_to_buy = calculation.quantity/last_price;
 			} else if pair.contains("USD")
@@ -243,7 +242,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			let old_qty = qty_to_buy;
 
 			//change quantity to buy to stepped version so bybit api can accept it
-			qty_to_buy = ((qty_to_buy/qty_step).round() * qty_step);
+			qty_to_buy = (qty_to_buy/qty_step).round() * qty_step;
 
 			if qty_to_buy == 0.0 {
 				bl();
@@ -279,12 +278,12 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			);
 			println!(
 				"    Alt Order Size: {:.7} {}",
-				if !long_dec_needed {format!("{:.5}", qty_to_buy)} else {format!("{:.2}",  qty_to_buy)},
+				if !long_dec_needed {format!("{:.3}", qty_to_buy)} else {format!("{:.2}",  qty_to_buy)},
 				alt_base
 			);
-			println!("    SL-TP Ratio : {:.2}R", calculation.tpslratio);
-			println!("    L % Decrease (Stepped): {:.3}", (qty_to_buy/old_qty)*risk);
-			println!("    W % Increase : {:.2}%", calculation.tpslratio*risk); //calculation.tpslratio*risk
+			println!("    SL-TP Ratio: {:.2}R", calculation.tpslratio);
+			println!("    L % Decrease: {:.3}%", (qty_to_buy/old_qty)*risk);
+			println!("    W % Increase: {:.2}%", (qty_to_buy/old_qty)*calculation.tpslratio*risk); //calculation.tpslratio*risk
 
 			let fee_rate = (if istaker {symbol_info.taker_fee.to_owned()} else {symbol_info.maker_fee.to_owned()}).parse::<f64>()?;
 			let entry_fees = calculation.quantity * fee_rate;
@@ -293,9 +292,13 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			let split_fee_percentage = entry_fees/split_fee_win;
 			
 			println!(
-				"    Entry Fees: {:.10} {} (Split WL: {:.4}% {:.0}x)",
+				"    Entry Fees: {:.10} {}",
 				if long_dec_needed {format!("{:.10}", entry_fees)} else {format!("{:.2}", entry_fees)},
 				&base_currency,
+			);
+
+			println!(
+				"    Split WL Fees: {:.4}% {:.0}x",
 				split_fee_percentage,
 				100.0/(split_fee_percentage*100.0)
 			);
@@ -325,10 +328,10 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 				},
 				OrderEntryType::Limit => {
 					//and so the useless code spread...
-				},
+				},/*
 				_ => {
 					bail!("Big Panik! order_type not supported at order_type match")
-				}
+				}*/
 			}
 
 			let order_data = PlaceActiveOrderData {
@@ -371,7 +374,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			let inserted_trade = db_insert_ftrade(db::Trade {
 				_id: None,
 				exchange: Exchange::Bybit,
-				sub_account_name: sub_account.to_owned(),
+				sub_account_name: sub_account.to_string(),
 				timestamp_open: Utc::now().timestamp().to_string().parse::<i64>()?,
 				filled: false,
 				risk,
@@ -383,7 +386,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			})?;
 			//open database after update so no conflicts
 			let mut db = Database::open(database_location().as_str()).unwrap();
-			let mut collection = db.collection("ftrades").unwrap();
+			let _collection = db.collection("ftrades").unwrap();
 
 			bl();
 			println!("{:#?}", inserted_trade);
@@ -400,8 +403,14 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
         		println!("  {}: {}", currency, wallet.wallet_balance);
 				//debug msg
 				//println!("{:#?}", wallet);
-    }
-		},
+    		}
+		}
+		"dbfetch" => {
+			println!("{:#?}", db_get_ftrades()?);
+		}
+		"dbwipe" => {
+			db_wipe_trades();
+		}
 		//testing bybit-rs http error
 		"http_error" => {
 			use bybit::http::{Error as HttpError, ErrorCode};
