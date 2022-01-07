@@ -1,1 +1,3 @@
-pub fn _ftx_sync_startup() {}
+async fn ftx_startup_sync() {
+
+}

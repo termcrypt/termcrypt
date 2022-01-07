@@ -1,5 +1,5 @@
 use anyhow::{bail, Error as AnyHowError, Result};
-use bybit::{http, rest::*, OrderType, Side, TimeInForce};
+use bybit::{http, rest::*, OrderType, Side, TimeInForce, TriggerPrice};
 
 use chrono::{Utc};
 
@@ -113,12 +113,41 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			//gives result of search operation
 			println!("  {}", boldt(format!("{} Pairs Found", matched_count).as_str()));
 		},
-		"m"|"l"|"o" => {
+		"o"|"order"|"m"|"l"|"c"|"ob" => {
 			/*
 			//  Checking ordertype
 			*/
 
-			let order_type: OrderEntryType;
+			let mut order_type: OrderEntryType = OrderEntryType::Market;
+			let mut conditional_is_market = true;
+
+			//function to define market or limit for conditional orders
+			fn ask_conditional(conditional_is_market: &mut bool, order_type: &mut OrderEntryType) -> Result<(), AnyHowError>{
+				*order_type = OrderEntryType::Conditional;
+				let mut temp_conditional_q: String;
+				loop {
+					println!("  Choose market or limit for your conditional order.");
+					temp_conditional_q = ask("[m|l]", Some("conditionalentrytype".to_string()))?;
+					match temp_conditional_q.as_str() {
+						"m" => {
+							*conditional_is_market = true;
+						},
+						"l" => {
+							*conditional_is_market = false;
+						},
+						_ => {
+							bl();
+							println!("  !!! NOT AN OPTION !!! Please choose market or limit (m or l)");
+							bl();
+							continue;
+						}
+					}
+					bl();
+					break;
+				}
+				Ok(())
+			}
+
 			match x {
 				"m" => {
 					order_type = OrderEntryType::Market;
@@ -126,10 +155,16 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 				"l" => {
 					order_type = OrderEntryType::Limit;
 				},
+				"c" => {
+					ask_conditional(&mut conditional_is_market, &mut order_type)?;
+				},
+				"ob" => {
+					order_type = OrderEntryType::OrderBook;
+				},
 				_ => {
 					let mut temp_order_type: String;
 					loop {
-						temp_order_type = ask("[m|l]", Some("orderentrytype".to_string()))?;
+						temp_order_type = ask("[m|l|c|ob]", Some("orderentrytype".to_string()))?;
 						match temp_order_type.as_str() {
 							"m" => {
 								order_type = OrderEntryType::Market;
@@ -137,9 +172,15 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 							"l" => {
 								order_type = OrderEntryType::Limit;
 							},
+							"c" => {
+								ask_conditional(&mut conditional_is_market, &mut order_type)?;
+							},
+							"ob" => {
+								order_type = OrderEntryType::OrderBook;
+							},
 							_ => {
 								bl();
-								println!("  !!! NOT AN OPTION !!! Please choose market or limit (m or l)");
+								println!("  !!! NOT AN OPTION !!! Please choose one of the options (m, l, c & ob)");
 								bl();
 								continue;
 							}
@@ -205,13 +246,25 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			//println!("{:?}", symbol_info);
 
 			let entry: f64;
-			let istaker: bool;
-			if order_type == OrderEntryType::Limit {
-				entry = ask("[Entry Price]", Some("entryprice".to_string()))?.parse::<f64>()?;
-				istaker = false;
-			} else {
-				entry = last_price;
-				istaker = true;
+			let mut conditional_actual_entry: Option<f64> = None;
+			let _is_taker: bool;
+			match order_type {
+				OrderEntryType::Limit => {
+					entry = ask("[Entry Price]", Some("entryprice".to_string()))?.parse::<f64>()?;
+					_is_taker = false;
+				}
+				OrderEntryType::Market => {
+					entry = last_price;
+					_is_taker = true;
+				}
+				OrderEntryType::Conditional => {
+					entry = ask("[Trigger Price]", Some("conditionaltriggerprice".to_string()))?.parse::<f64>()?;
+					if !conditional_is_market {
+						conditional_actual_entry = Some(ask("[Entry Price]", Some("conditionalentryprice".to_string()))?.parse::<f64>()?);
+					}
+					_is_taker = conditional_is_market;
+				}
+				_ => bail!("Big Panik! order_type not supported at order_type match")
 			}
 
 			if !((entry < takeprofit && entry > stoploss)||(entry > takeprofit && entry < stoploss)) {
@@ -230,12 +283,13 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 
 			//real quantity calculation
 			let mut qty_to_buy: f64;
+			
 			if pair.ends_with("USDT") {
-				qty_to_buy = calculation.quantity/last_price;
-			} else if pair.contains("USD")
-			||pair.contains("USD0325")
-			||pair.contains("USD0624") {
-				qty_to_buy = last_price*calculation.quantity;
+				qty_to_buy = calculation.quantity/entry;
+			} else if pair.ends_with("USD")
+			||pair.ends_with("USD0325")
+			||pair.ends_with("USD0624") {
+				qty_to_buy = entry*calculation.quantity;
 			} else {
 				bail!("Your current pair is not supported for quantity calculation (devs probably lazy) notify us on our repository.");
 			}
@@ -268,12 +322,14 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 				"    Trigger Type: {}",
 				match order_type {
 					OrderEntryType::Market => "Market",
-					OrderEntryType::Limit => "Limit"
+					OrderEntryType::Limit => "Limit",
+					OrderEntryType::Conditional => if conditional_is_market {"Conditional Market"} else {"Conditional Limit"},
+					_ => bail!("Big Panik! order_type not supported at order_type match")
 				}
 			);
 			println!(
 				"    Order Size: {:.7} {}",
-				if long_dec_needed {format!("{:.10}", last_price*qty_to_buy)} else {format!("{:.2}",  last_price*qty_to_buy)},
+				if long_dec_needed {format!("{:.10}", entry*qty_to_buy)} else {format!("{:.2}",  entry*qty_to_buy)},
 				&base_currency
 			);
 			println!(
@@ -285,12 +341,17 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			println!("    L % Decrease: {:.3}%", (qty_to_buy/old_qty)*risk);
 			println!("    W % Increase: {:.2}%", (qty_to_buy/old_qty)*calculation.tpslratio*risk); //calculation.tpslratio*risk
 
-			let fee_rate = (if istaker {symbol_info.taker_fee.to_owned()} else {symbol_info.maker_fee.to_owned()}).parse::<f64>()?;
-			let entry_fees = calculation.quantity * fee_rate;
 
-			let split_fee_win = available_liquid*(((calculation.tpslratio/100.0)*risk)-risk/100.0);
+
+			/* broken fees code
+			let fee_rate = (if is_taker {symbol_info.taker_fee.to_owned()} else {symbol_info.maker_fee.to_owned()}).parse::<f64>()?;
+			let entry_fees = (qty_to_buy/old_qty)*calculation.quantity*fee_rate;
+
+			let split_fee_win = available_liquid*((((((calculation.tpslratio)/100.0)*risk)+risk)*2.0)/100.0);
 			let split_fee_percentage = entry_fees/split_fee_win;
+			*/
 			
+			/*
 			println!(
 				"    Entry Fees: {:.10} {}",
 				if long_dec_needed {format!("{:.10}", entry_fees)} else {format!("{:.2}", entry_fees)},
@@ -302,6 +363,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 				split_fee_percentage,
 				100.0/(split_fee_percentage*100.0)
 			);
+			*/
 
 			bl();
 			println!("{}", boldt("Confirm Trade?"));
@@ -316,61 +378,131 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			/*
 			//  Using bybit API to start order
 			*/
-
-			//price setting
-			let mut price_to_buy: Option<f64> = Some(entry);
-			let mut bybit_rs_ot: OrderType = OrderType::Limit;
-
-			match order_type {
-				OrderEntryType::Market => {
-					price_to_buy = None;
-					bybit_rs_ot = OrderType::Market;
-				},
-				OrderEntryType::Limit => {
-					//and so the useless code spread...
-				},/*
-				_ => {
-					bail!("Big Panik! order_type not supported at order_type match")
-				}*/
-			}
-
-			let order_data = PlaceActiveOrderData {
-				symbol: pair.to_string(),
-				side: if calculation.islong {Side::Buy} else {Side::Sell},
-				qty: qty_to_buy,
-				order_type: bybit_rs_ot,
-				price: price_to_buy,
-				time_in_force: TimeInForce::PostOnly,
-				take_profit: Some(takeprofit),
-				stop_loss: Some(stoploss),
-				reduce_only: Some(false),
-				close_on_trigger: Some(false),
-				..Default::default()
-			};
-
-			//debug
-			bl();
-			println!("{:#?}", order_data);
 			let order_id: String;
 			let stop_loss: f64;
 			let take_profit: f64;
 
-			if is_linear {
-				let order_result = api.place_active_linear_order(order_data).await?;
-				println!("{:?}", order_result);
+			match order_type {
+				OrderEntryType::Market|OrderEntryType::Limit => {
+					let mut price_to_buy: Option<f64> = Some(entry);
+					let mut bybit_rs_ot: OrderType = OrderType::Limit;
 
-				order_id = order_result.id.to_string();
-				stop_loss = order_result.stop_loss;
-				take_profit = order_result.take_profit;
-			} else {
-				let order_result = api.place_active_order(order_data).await?;
-				println!("{:?}", order_result);
+					if order_type == OrderEntryType::Market {
+						price_to_buy = None;
+						bybit_rs_ot = OrderType::Market;
 
-				order_id = order_result.id.to_string();
-				stop_loss = order_result.stop_loss;
-				take_profit = order_result.take_profit;
+					}
+
+					let order_data = PlaceActiveOrderData {
+						symbol: pair.to_string(),
+						side: if calculation.islong {Side::Buy} else {Side::Sell},
+						qty: qty_to_buy,
+						order_type: bybit_rs_ot,
+						price: price_to_buy,
+						time_in_force: TimeInForce::PostOnly,
+						take_profit: Some(takeprofit),
+						stop_loss: Some(stoploss),
+						reduce_only: Some(false),
+						close_on_trigger: Some(false),
+						..Default::default()
+					};
+
+					//debug
+					bl();
+					println!("{:#?}", order_data);
+
+					if is_linear {
+						let order_result = api.place_active_linear_order(order_data).await?;
+		
+						order_id = order_result.id.to_string();
+						stop_loss = order_result.stop_loss;
+						take_profit = order_result.take_profit;
+
+						//debug
+						println!("{:?}", order_result);
+					} else {
+						let order_result = api.place_active_order(order_data).await?;
+		
+						order_id = order_result.id.to_string();
+						stop_loss = order_result.stop_loss;
+						take_profit = order_result.take_profit;
+
+						//debug
+						println!("{:?}", order_result);
+					}
+				},
+				OrderEntryType::Conditional => {
+					let mut price_to_buy: Option<f64> = conditional_actual_entry;
+					let mut bybit_rs_ot: OrderType = OrderType::Limit;
+
+					if conditional_is_market {
+						price_to_buy = None;
+						bybit_rs_ot = OrderType::Market;
+					}
+
+					let order_result;
+					if is_linear {
+						let order_data = PlaceLinearConditionalOrderData {
+							symbol: pair.to_string(),
+							side: if calculation.islong {Side::Buy} else {Side::Sell},
+							qty: qty_to_buy,
+							order_type: bybit_rs_ot,
+							price: price_to_buy,
+							time_in_force: TimeInForce::PostOnly,
+							take_profit: Some(takeprofit),
+							stop_loss: Some(stoploss),
+							reduce_only: false,
+							close_on_trigger: false,
+							base_price: last_price, /* maybe change this to a more updated last price if this causes problems in the future */
+							stop_px: entry,
+							trigger_by: Some(TriggerPrice::LastPrice),
+						..Default::default()
+						};
+
+						//debug
+						bl();
+						println!("{:#?}", order_data);
+
+						order_result = api.place_linear_conditional_order(order_data).await?;
+
+					} else {
+						let order_data = PlaceActiveOrderData {
+							symbol: pair.to_string(),
+							side: if calculation.islong {Side::Buy} else {Side::Sell},
+							qty: qty_to_buy,
+							order_type: bybit_rs_ot,
+							price: price_to_buy,
+							time_in_force: TimeInForce::PostOnly,
+							take_profit: Some(takeprofit),
+							stop_loss: Some(stoploss),
+							reduce_only: Some(false),
+							close_on_trigger: Some(false),
+							base_price: Some(last_price.to_string()), /* maybe change this to a more updated last price if this causes problems in the future */
+							stop_px: Some(entry.to_string()),
+						..Default::default()
+						};
+
+						//debug
+						bl();
+						println!("{:#?}", order_data);
+					
+						order_result = api.place_conditional_order(order_data).await?;
+
+					}
+
+					order_id = order_result.id.to_string();
+					stop_loss = order_result.stop_loss;
+					take_profit = order_result.take_profit;
+
+					//debug
+					println!("{:?}", order_result);
+				},
+				_ => {
+					bail!("Big Panik! order_type not supported at api interaction match statement (order type not implemented yet)")
+				}
 			}
-			
+
+
 			let inserted_trade = db_insert_ftrade(db::Trade {
 				_id: None,
 				exchange: Exchange::Bybit,
