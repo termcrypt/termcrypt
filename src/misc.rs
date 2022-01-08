@@ -1,4 +1,4 @@
-use anyhow::{bail, Error, Result};
+use anyhow::{bail, Error as AnyHowError, Result};
 use chrono::{DateTime, Duration, NaiveTime, TimeZone, Utc};
 use rust_decimal::prelude::*;
 use super::db::*;
@@ -19,7 +19,7 @@ use super::utils::{
 //use super::utils::boldt as boldt;
 
 //Command Handling
-pub async fn handle_commands(x: &str, wide: &mut bool, loop_iteration: i32) -> Result<bool, Error> {
+pub async fn handle_commands(x: &str, wide: &mut bool, loop_iteration: i32) -> Result<bool, AnyHowError> {
 	let mut isrealcommand = true;
 	match x {
 		//lists all commands
@@ -243,7 +243,42 @@ pub struct OrderCalcExit {
 	pub tpslratio: f64,
 }
 
-pub fn calculate_order(ov: OrderCalcEntry) -> Result<OrderCalcExit, Error> {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum EntryType {
+	Market,
+	Limit
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Exchange {
+	Ftx,
+	Bybit,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ExchangeContext {
+	BybitInverse,
+	BybitLinear,
+	_BybitSpot,
+	_BybitFutures
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum OrderEntryType {
+	Market,
+	Limit,
+	Conditional,
+	OrderBook,
+    //this exists so other order types can be added in the future
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum OrderDirection {
+	Long,
+	Short
+}
+
+pub fn calculate_order(ov: OrderCalcEntry) -> Result<OrderCalcExit, AnyHowError> {
 	let error_margin = f64::EPSILON;
 
 	let mut islong = true;

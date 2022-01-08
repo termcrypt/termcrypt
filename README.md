@@ -15,8 +15,8 @@ A terminal-like interface for efficiently trading the market.
 
 Planned Exchanges termcrypt currently supports:
 
-- [x] FTX
-- [ ] Bybit
+- [ ] FTX
+- [x] Bybit
 
 Right now the project is in very early development, so to test it you will most likely have to clone the source and will have to follow the steps on the build section below. 
 

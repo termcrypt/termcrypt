@@ -7,9 +7,10 @@ use bybit::Error;
 use polodb_core::Database;
 
 use super::super::misc;
+use super::super::misc::*;
 use super::super::utils::{askout as ask, boldt, yn, bl};
 use super::bybit_utils::*;
-use super::bybit_advanced_orders::*;
+//use super::bybit_advanced_orders::*;
 use super::super::db;
 use super::super::db::*;
 
@@ -304,7 +305,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 			} else if qty_to_buy < min_qty*10.0 {
 				bl();
 				println!("  {}", boldt("Warning"));
-				println!("    You have a {} {} balance compared to bybits' minimum increment ({}). ",  if qty_to_buy < min_qty*5.0 {"CONSIDERABLY low"} else {"low"}, alt_base, min_qty);
+				println!("    You have a {} {} buying availability compared to bybits' minimum increment ({}). ",  if qty_to_buy < min_qty*5.0 {"CONSIDERABLY low"} else {"low"}, alt_base, min_qty);
 				println!("    You may be risking more or less than you want in this trade.");
 				bl();
 			}
@@ -479,6 +480,7 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 							close_on_trigger: Some(false),
 							base_price: Some(last_price.to_string()), /* maybe change this to a more updated last price if this causes problems in the future */
 							stop_px: Some(entry.to_string()),
+							trigger_by: Some(TriggerPrice::LastPrice),
 						..Default::default()
 						};
 
@@ -505,7 +507,6 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 
 			let inserted_trade = db_insert_ftrade(db::Trade {
 				_id: None,
-				exchange: Exchange::Bybit,
 				sub_account_name: sub_account.to_string(),
 				timestamp_open: Utc::now().timestamp().to_string().parse::<i64>()?,
 				filled: false,
@@ -515,6 +516,12 @@ pub async fn handle_commands<'a>(ch: CommandHandling<'_>) -> Result<bool, AnyHow
 				take_profit: Some(take_profit),
 				sl_id: None,
 				tp_id: None,
+				exchange: Exchange::Bybit,
+				exchange_context: if is_linear {ExchangeContext::BybitLinear} else {ExchangeContext::BybitInverse},
+				entry_type: if (order_type == OrderEntryType::Conditional && conditional_is_market)
+				||order_type == OrderEntryType::Market {EntryType::Market} else {EntryType::Limit},
+				client_order_type: order_type,
+				direction: if calculation.islong {OrderDirection::Long} else {OrderDirection::Short}
 			})?;
 			//open database after update so no conflicts
 			let mut db = Database::open(database_location().as_str()).unwrap();

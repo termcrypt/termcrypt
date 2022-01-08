@@ -9,6 +9,7 @@ use rand::Rng;
 //use rust_decimal_macros::dec;
 
 use super::utils::{askout as ask, boldt};
+use super::misc::*;
 
 pub fn database_location() -> String {
 	format!("{}/termcrypt/database", dirs::data_dir().unwrap().display())
@@ -177,24 +178,22 @@ pub fn db_inside(db: &mut polodb_core::Database, bruh: &mut polodb_bson::Documen
 }
 
 #[derive(Debug)]
-pub enum Exchange {
-	Ftx,
-	Bybit,
-}
-
-#[derive(Debug)]
 pub struct Trade {
 	pub _id: Option<f64>,
+	pub exchange: Exchange,
+	pub exchange_context: ExchangeContext,
 	pub sub_account_name: String,
+	pub entry_type: EntryType,
+	pub client_order_type: OrderEntryType,
 	pub timestamp_open: i64,
 	pub filled: bool,
+	pub direction: OrderDirection,
 	pub risk: f64,
 	pub main_id: String,
 	pub stop_loss: Option<f64>,
 	pub take_profit: Option<f64>,
 	pub sl_id: Option<String>,
 	pub tp_id: Option<String>,
-	pub exchange: Exchange,
 }
 
 pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
@@ -221,6 +220,7 @@ pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
 			"sub_account_name": td.sub_account_name.to_string(),
 			"timestamp_open": td.timestamp_open.to_string(),
 			"filled": if td.filled {"true"} else {"false"},
+			"direction": if td.direction == OrderDirection::Long {"long"} else {"short"},
 			"risk": td.risk.to_string(),
 			"main_id": td.main_id,
 			"stop_loss": if td.stop_loss == None {"".to_string()} else {td.stop_loss.unwrap().to_string()},
@@ -230,7 +230,23 @@ pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
 			"exchange": match td.exchange {
 				Exchange::Ftx => {"ftx"},
 				Exchange::Bybit => {"bybit"},
+			},
+			"exchange_context": match td.exchange_context {
+				ExchangeContext::BybitInverse => {"bybit_inverse"},
+				ExchangeContext::BybitLinear => {"bybit_linear"},
+				_ => {bail!(format!("Exchange context: <{:?}> is not a available (yet).", td.exchange_context))}
+			},
+			"entry_type": match td.entry_type {
+				EntryType::Market => {"market"},
+				EntryType::Limit => {"limit"}
+			},
+			"client_order_type": match td.client_order_type {
+				OrderEntryType::Market => {"market"},
+				OrderEntryType::Limit => {"limit"},
+				OrderEntryType::Conditional => {"conditional"},
+				OrderEntryType::OrderBook => {"orderbook"},
 			}
+
 		})
 		.unwrap();
 	Ok(id)
@@ -249,11 +265,17 @@ pub fn _db_get_ftrade(id: i64) -> Result<Option<Trade>, Error> {
 			let exchange = doc.get("exchange").unwrap().unwrap_string();
 			let filled = doc.get("filled").unwrap().unwrap_string();
 
+			let exchange_context = doc.get("exchange_context").unwrap().unwrap_string();
+			let entry_type = doc.get("entry_type").unwrap().unwrap_string();
+			let client_order_type = doc.get("client_order_type").unwrap().unwrap_string();
+			let direction = doc.get("direction").unwrap().unwrap_string();
+			
 			Ok(Some(Trade {
 				_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<f64>()?),
 				sub_account_name: doc.get("sub_account_name").unwrap().unwrap_string().to_string(),
 				timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<i64>()?/*, "%s")?*/,
 				filled: filled == "true",
+				direction: if direction == "long" {OrderDirection::Long} else {OrderDirection::Short},
 				risk: doc.get("risk").unwrap().unwrap_string().parse::<f64>()?,
 				main_id: doc.get("main_id").unwrap().unwrap_string().to_string(),
 				stop_loss: if stop_loss.is_empty() {None} else {Some(stop_loss.parse::<f64>()?)},
@@ -262,8 +284,25 @@ pub fn _db_get_ftrade(id: i64) -> Result<Option<Trade>, Error> {
 				tp_id: if tp_id.is_empty() {None} else {Some(tp_id.to_string())},
 				exchange: match exchange {
 					"ftx" => {Exchange::Ftx},
-					"bybit" => {Exchange::Bybit},
-					_ => {bail!(format!("Exchange option: <{}> is not a valid exchange.", exchange))}
+					"bybit" => {Exchange::Bybit}
+					_ => {bail!(format!("Exchange: <{:?}> is not available (yet).", exchange))}
+				},
+				exchange_context: match exchange_context {
+					"bybit_inverse" => {ExchangeContext::BybitInverse},
+					"bybit_linear" => {ExchangeContext::BybitLinear},
+					_ => {bail!(format!("Exchange context: <{:?}> is not available (yet).", exchange_context))}
+				},
+				entry_type: match entry_type {
+					"market" => {EntryType::Market},
+					"limit" => {EntryType::Limit}
+					_ => {bail!(format!("Entry type: <{:?}> is not available (yet).", entry_type))}
+				},
+				client_order_type: match client_order_type {
+					"market" => {OrderEntryType::Market},
+					"limit" => {OrderEntryType::Limit},
+					"conditional" => {OrderEntryType::Conditional},
+					"orderbook" => {OrderEntryType::OrderBook},
+					_ => {bail!(format!("Client order type: <{:?}> is not available (yet).", client_order_type))}
 				}
 			}))
 		}
@@ -294,12 +333,18 @@ pub fn db_get_ftrades() -> Result<Vec<Trade>, Error> {
 		let exchange = doc.get("exchange").unwrap().unwrap_string();
 		let filled = doc.get("filled").unwrap().unwrap_string();
 
+		let exchange_context = doc.get("exchange_context").unwrap().unwrap_string();
+		let entry_type = doc.get("entry_type").unwrap().unwrap_string();
+		let client_order_type = doc.get("client_order_type").unwrap().unwrap_string();
+		let direction = doc.get("direction").unwrap().unwrap_string();
+
 		trade_array.push(
 			Trade {
 				_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<f64>()?),
 				sub_account_name: doc.get("sub_account_name").unwrap().unwrap_string().to_string(),
 				timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<i64>()?/*, "%s")?*/,
 				filled: filled == "true",
+				direction: if direction == "long" {OrderDirection::Long} else {OrderDirection::Short},
 				risk: doc.get("risk").unwrap().unwrap_string().parse::<f64>()?,
 				main_id: doc.get("main_id").unwrap().unwrap_string().to_string(),
 				stop_loss: if stop_loss.is_empty() {None} else {Some(stop_loss.parse::<f64>()?)},
@@ -308,8 +353,25 @@ pub fn db_get_ftrades() -> Result<Vec<Trade>, Error> {
 				tp_id: if tp_id.is_empty() {None} else {Some(tp_id.to_string())},
 				exchange: match exchange {
 					"ftx" => {Exchange::Ftx},
-					"bybit" => {Exchange::Bybit},
-					_ => {bail!(format!("Exchange option: <{}> is not a valid exchange.", exchange))}
+					"bybit" => {Exchange::Bybit}
+					_ => {bail!(format!("Exchange: <{:?}> is not available (yet).", exchange))}
+				},
+				exchange_context: match exchange_context {
+					"bybit_inverse" => {ExchangeContext::BybitInverse},
+					"bybit_linear" => {ExchangeContext::BybitLinear},
+					_ => {bail!(format!("Exchange context: <{:?}> is not available (yet).", exchange_context))}
+				},
+				entry_type: match entry_type {
+					"market" => {EntryType::Market},
+					"limit" => {EntryType::Limit}
+					_ => {bail!(format!("Entry type: <{:?}> is not available (yet).", entry_type))}
+				},
+				client_order_type: match client_order_type {
+					"market" => {OrderEntryType::Market},
+					"limit" => {OrderEntryType::Limit},
+					"conditional" => {OrderEntryType::Conditional},
+					"orderbook" => {OrderEntryType::OrderBook},
+					_ => {bail!(format!("Client order type: <{:?}> is not available (yet).", client_order_type))}
 				}
 			}
 		);

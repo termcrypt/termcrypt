@@ -1,19 +1,20 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
-mod bybit_exchange;
-mod db;
-mod misc;
-mod utils;
-use bybit::{http};
-use bybit_exchange::{bybit_inter};
-//use ftx::{options::Options, rest::*};
-
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::env;
 use std::fs;
 use terminal_size::{terminal_size, Height, Width};
 
+mod bybit_exchange;
+mod db;
+mod misc;
+mod utils;
+mod sync;
+use sync::*;
+use bybit::{http};
+use bybit_exchange::{bybit_inter};
+//use ftx::{options::Options, rest::*};
 use db::{get_db_info, history_location};
 
 static VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -82,6 +83,16 @@ async fn main() {
 	line_main.load_history(&line_main_location).unwrap();
 
 	let mut loop_iteration: i32 = 1;
+
+	//function to synchronize what was missed when termcrypt was not running
+	match startup_sync(Some(&mut bybit_api)).await {
+		Ok(_x) => {/*:L*/}
+		Err(e) => {
+			println!();
+			eprintln!("!! Failed to sync (fatal) but termcrypt kept running: {:?} !!", e);
+			println!();
+		}
+	};
 
 	loop {
 		//Start of loop
