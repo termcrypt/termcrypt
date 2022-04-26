@@ -2,6 +2,7 @@ use ansi_term::ANSIGenericString;
 use ansi_term::Style;
 use anyhow::{bail, Error as AnyHowError};
 use rust_decimal::{Decimal, RoundingStrategy};
+use terminal_size::{terminal_size, Height, Width};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -145,6 +146,41 @@ pub fn _mbl(count: i32) {
 	while i < count {
 		println!();
 		i += 1
+	}
+}
+
+// Splits a string into a vector of strings to appeal to a width (used for word wrap)
+pub fn sub_strings(string: String, split_len: usize) -> Vec<String> {
+    let mut subs: Vec<String> = Vec::with_capacity(string.len() / split_len);
+    let mut iter = string.chars();
+    let mut pos = 0;
+
+	// Case if "" is passed
+	if string.len() == 0 {
+		return vec!["".to_string()]
+	};
+
+    while pos < string.len() {
+        let mut len = 0;
+        for ch in iter.by_ref().take(split_len) {
+            len += ch.len_utf8();
+        }
+        subs.insert(0, (&string[pos..pos + len]).to_string());
+        pos += len;
+    }
+    subs
+}
+
+// Gets terminal width
+pub fn terminal_width() -> u16 {
+	// Get terminal width
+	let size = terminal_size();
+
+	// Checks if UI is big enough to contain wide ascii (removed?)
+	if let Some((Width(width), Height(_h))) = size {
+		width
+	} else {
+		0
 	}
 }
 

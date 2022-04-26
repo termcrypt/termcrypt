@@ -45,10 +45,7 @@ pub async fn handle_commands<B: Backend>(us: &mut crate::UserSpace, terminal: &m
 					match choice.as_str() {
 						"1" => {
 							//let pair_to_check = ask("", None)?;
-							us.prnt(format!(
-								"{}",
-								db_insert_config(&mut database, "bybit_default_pair", &us.pair)?
-							));
+							us.prnt(db_insert_config(&mut database, "bybit_default_pair", &us.pair)?);
 							us.prnt("  Changed default pair successfully".to_string());
 						}
 						"2" => {
@@ -170,7 +167,7 @@ pub async fn handle_commands<B: Backend>(us: &mut crate::UserSpace, terminal: &m
 			*/
 
 			let mut _order_type: OrderEntryType = OrderEntryType::Market;
-			let mut conditional_is_market = true;
+			let mut _conditional_is_market = true;
 
 			us.prnt(" Opening a trade...".to_string());
 
@@ -287,12 +284,12 @@ pub async fn handle_commands<B: Backend>(us: &mut crate::UserSpace, terminal: &m
 				}
 				OrderEntryType::Conditional => {
 					entry = us.ask_input("Trigger Price", terminal, Some("conditional_trigger_price")).await?.parse::<f64>()?;
-					if !conditional_is_market {
+					if !_conditional_is_market {
 						conditional_actual_entry = Some(
 							us.ask_input("Entry Price", terminal, Some("conditional_entry_price")).await?.parse::<f64>()?,
 						);
 					}
-					_is_taker = conditional_is_market;
+					_is_taker = _conditional_is_market;
 				}
 				_ => bail!("Big Panik! order_type not supported at order_type match"),
 			}
@@ -353,7 +350,7 @@ pub async fn handle_commands<B: Backend>(us: &mut crate::UserSpace, terminal: &m
 					OrderEntryType::Market => "Market",
 					OrderEntryType::Limit => "Limit",
 					OrderEntryType::Conditional =>
-						if conditional_is_market {
+						if _conditional_is_market {
 							"Conditional Market"
 						} else {
 							"Conditional Limit"
@@ -478,7 +475,7 @@ pub async fn handle_commands<B: Backend>(us: &mut crate::UserSpace, terminal: &m
 					let mut price_to_buy: Option<f64> = conditional_actual_entry;
 					let mut bybit_rs_ot: OrderType = OrderType::Limit;
 
-					if conditional_is_market {
+					if _conditional_is_market {
 						price_to_buy = None;
 						bybit_rs_ot = OrderType::Market;
 					}
@@ -563,7 +560,7 @@ pub async fn handle_commands<B: Backend>(us: &mut crate::UserSpace, terminal: &m
 				} else {
 					ExchangeContext::BybitInverse
 				},
-				entry_type: if (_order_type == OrderEntryType::Conditional && conditional_is_market)
+				entry_type: if (_order_type == OrderEntryType::Conditional && _conditional_is_market)
 					|| _order_type == OrderEntryType::Market
 				{
 					EntryType::Market

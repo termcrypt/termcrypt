@@ -28,7 +28,7 @@ mod userspace;
 use bybit_exchange::bybit_inter;
 use db::{get_db_info, history_location};
 use sync::*;
-use utils::{bl, termbug};
+use utils::{bl, termbug, terminal_width};
 
 // Cargo information
 static VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -132,15 +132,9 @@ async fn main() -> AnyHowResult<(), AnyHowError> {
 	});
 
 	// Get terminal width
-	let size = terminal_size();
 	let mut desktop_terminal = false;
-
-	// Checks if UI is big enough to contain wide ascii (removed?)
-	if let Some((Width(width), Height(_h))) = size {
-		// Size of wide ascii art (70, 68 with borders)
-		if width >= 68 {
-			desktop_terminal = true;
-		}
+	if terminal_width() >= 68 {
+		desktop_terminal = true;
 	}
 
 	// Initiates database
@@ -164,9 +158,9 @@ async fn main() -> AnyHowResult<(), AnyHowError> {
 
 	// Initiates userspace (UI and main loop)
 	let mut userspace = UserSpace {
-		pair: db_info.bybit_default_pair.to_string(),
-		sub_account: db_info.bybit_default_sub.to_string(),
-		input_prefix: format!("[{}]({})>", db_info.bybit_default_sub.to_string(), db_info.bybit_default_pair.to_string()),
+		pair: db_info.bybit_default_pair.to_owned(),
+		sub_account: db_info.bybit_default_sub.to_owned(),
+		input_prefix: format!("[{}]({})>", db_info.bybit_default_sub, db_info.bybit_default_pair),
 		db_info,
 		// Initiates Bybit API (note: make option on multi exchanges)
 		bybit_api,
@@ -182,7 +176,7 @@ async fn main() -> AnyHowResult<(), AnyHowError> {
 			("at 2069$ (ETH)".to_string(), EventType::TpFill),
 			
 		],
-		tick_rate: Duration::from_millis(100),
+		tick_rate: Duration::from_millis(50),
 		stream_differ: 0,
 		input_old: String::new(),
 	};

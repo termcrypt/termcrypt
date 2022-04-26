@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 use crossterm::event::{self, Event, KeyCode, KeyModifiers, MouseEventKind};
 
 use crate::*;
+use crate::utils::sub_strings;
 
 impl crate::UserSpace {
     // Run the app and UI
@@ -213,9 +214,19 @@ impl crate::UserSpace {
 			terminal_interactive_section[1].y,
 		);
 
+        
+        // Wrap text before displaying so it is not cut off
+        let mut wrapped_command_history: Vec<String> = Vec::new();
+        let commands_widget_width = terminal_width()-3;
+
+        for line in app.command_history.to_owned() {
+            for sub_string in sub_strings(line, commands_widget_width.into()) {
+                wrapped_command_history.push(sub_string);
+            }
+        }
+
         // Creating the list of events for the past commands section
-		let past_commands_widget: Vec<ListItem> = app
-			.command_history
+		let past_commands_widget: Vec<ListItem> = wrapped_command_history
 			.iter()
 			.enumerate()
 			.map(|(_i, m)| {
