@@ -1,39 +1,47 @@
 [package]
 name = "termcrypt"
-version = "0.3.0"
-authors = ["peepopoggers <72892531+peepopoggers@users.noreply.github.com>"]
-edition = "2018"
-license = "AGPL-3.0-or-later"
 description = "Trading interface for the decentralized paradigm"
+version = "0.4.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/termcrypt/termcrypt"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+ansi_term = "^0.12.1"
+anyhow = "^1.0.44"
+bybit = { git = "https://github.com/peepopoggers/bybit-rs.git", branch = "main" }
+chrono = "^0.4"
+crossterm = "^0.23.2"
+derive_more = "^0.99.17"
+dirs = "^4.0"
+dotenv = "^0.15.0"
+futures = "^0.3"
+futures-util = "*"
+openssl = { version = "0.10", features = ["vendored"] }
+polodb_bson = "^2.0.0"
+polodb_core = "^2.0.0"
+rand = "^0.8.4"
+rust_decimal = "^1.16"
+rust_decimal_macros = "^1.16"
+rustyline = "^9.0.0"
+terminal_size = "^0.1.17"
 tokio = { version = "1", features = ["full"] }
-chrono = "0.4"
-ansi_term = "0.12.1"
-dotenv = "0.14.1"
-anyhow = "1.0.44"
-rust_decimal = "1.16"
-rust_decimal_macros = "1.16"
-rustyline = "9.0.0"
-terminal_size = "0.1.17"
-dirs = "4.0"
-futures = "0.3"
-polodb_core = "0.10.4"
-polodb_bson = "0.10.4"
-rand = "0.8.4"
-#spinners = "2.0.0"
-
-#Exchanges
-
+tui = "^0.18.0"
+unicode-width = "0.1"
+tuirealm = "^1.5.0"
+argh = "^0.1.7"
 #ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
-#ftx = { path = "./src/ftxtest" }
-ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main", version = "0.4.3" }
+#ftx = { git="https://github.com/peepopoggers/ftx", branch = "main" }
 
-#[dependencies.bybit]
-#git = "https://github.com/wassup-/bybit-rs.git"
-#git = "https://github.com/peepopoggers/bybit-rs.git"
-bybit = { path = "../bybit-rs" }
+[dependencies.serde]
+version = "*"
+features = ["derive"]
+
+# Fixes openSSL for android
+[features]
+static_ssl = ['openssl/vendored']
+
+# Makes binaries smaller
+[profile.release]
+strip = true
