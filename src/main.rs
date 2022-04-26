@@ -1,179 +1,223 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
-use std::env;
-use std::fs;
+use bybit::http::{self, Client as BybitClient};
+use anyhow::{Error as AnyHowError, Result as AnyHowResult};
+use serde::{Deserialize, Serialize};
+use std::{io::{self}, env, fs, time::{Duration}};
+use tui::{
+    backend::CrosstermBackend,
+    Terminal,
+};
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture},
+	cursor::DisableBlinking,
+    execute,
+    terminal::{self, disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
 use terminal_size::{terminal_size, Height, Width};
+use unicode_width::UnicodeWidthStr;
 
 mod bybit_exchange;
 mod db;
 mod misc;
-mod utils;
 mod sync;
-use sync::*;
-use bybit::{http};
-use bybit_exchange::{bybit_inter};
-//use ftx::{options::Options, rest::*};
+mod utils;
+mod ws;
+mod userspace;
+
+use bybit_exchange::bybit_inter;
 use db::{get_db_info, history_location};
+use sync::*;
+use utils::{bl, termbug};
 
+// Cargo information
 static VERSION: &str = env!("CARGO_PKG_VERSION");
+static REPO: &str = "https://github.com/termcrypt/termcrypt";
 
+// Values returned from initial database query
+#[derive(Clone, Debug)]
 pub struct Config {
+	// Default user pair for Bybit
 	pub bybit_default_pair: String,
+	// Default user sub-account for Bybit
 	pub bybit_default_sub: String,
+	// Public API key for Bybit
 	pub bybit_pub_key: String,
+	// Private API key for Bybit
 	pub bybit_priv_key: String,
+	// User config ratio warn number;
+	// Warns user if trade ratio is too low
 	pub ratio_warn_num: f64,
 }
 
+// Enabled exchanges (use this when implementing multiple exchanges)
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EnabledExchanges {
+	// bybit.com
+	pub bybit: bool,
+	// ftx.com
+	pub ftx: bool,
+}
+
+// UI display arrangements
+enum UIModes {
+	// Events section hidden
+	InputOnly,
+	// Default UI (both events and commands)
+	Split,
+	// Whole UI is for events
+	EventsOnly
+}
+
+// User interface location for function focus
+pub enum UILocation {
+	// Main output stream
+	Main,
+	// Background output stream (fills, etc)
+	Events
+}
+
+// Event notification type for the events widget
+pub enum EventType {
+	// Entry filled
+	EntryFill,
+	// Take-profit filled
+	TpFill,
+	// Stoploss filled
+	SlFill,
+	// Significant warning
+	Warning,
+	// Empty message
+	Empty
+}
+
+// Userspace state
+pub struct UserSpace {
+	// Database information
+	pub db_info: Config,
+	// Current pair name
+	pub pair: String,
+	// Current sub-account name
+	pub sub_account: String,
+	// Bybit API 
+	pub bybit_api: BybitClient,
+	// Boolean for if the terminal is wide enough for ascii
+	pub desktop_terminal: bool,
+	// Current user input before submission
+	pub input: String,
+	// Old input before wiping linked box
+	pub input_old: String,
+	// Prefix preceding user input
+	pub input_prefix: String,
+    // History of user commands
+    pub command_history: Vec<String>,
+	// Scroll overflow vector for past commands out of sight
+	pub command_history_scroll_overflow: Vec<String>,
+	// Count of user commands
+	pub command_count: u32,
+	// Events (orders etc) history
+	pub event_history: Vec<(String, EventType)>,
+	// Tick rate of UI
+	pub tick_rate: Duration,
+	// Stream difference
+	pub stream_differ: u16,
+}
+
+// Where the program starts :)
 #[tokio::main]
-async fn main() {
-	//creates termcrypt data folder & history subfolder if does not exist
-	let _x = fs::create_dir_all(history_location().as_str());
-	match _x {
-		Ok(_x) => _x,
-		Err(_e) => (),
+async fn main() -> AnyHowResult<(), AnyHowError> {
+	// Creates termcrypt data folder & history subfolder if does not exist
+	let _x = fs::create_dir_all(history_location().as_str()).unwrap_or_else(|_| {
+		panic!("COULD NOT CREATE HISTORY DIRECTORY")
+	});
+
+	// Get terminal width
+	let size = terminal_size();
+	let mut desktop_terminal = false;
+
+	// Checks if UI is big enough to contain wide ascii (removed?)
+	if let Some((Width(width), Height(_h))) = size {
+		// Size of wide ascii art (70, 68 with borders)
+		if width >= 68 {
+			desktop_terminal = true;
+		}
 	}
 
-	//initiates database
-	let mut db_info = get_db_info(true).await.unwrap();
+	// Initiates database
+	let db_info = get_db_info(true).await?;
+	let mut command_history = Vec::new();
 
-	//default variables
-	let mut pair: String = db_info.bybit_default_pair.to_string();
-	let mut subaccount: String = db_info.bybit_default_sub.to_string();
-
+	// Start bybit api instance
 	let mut bybit_api = http::Client::new(
 		http::MAINNET_BYBIT,
 		&db_info.bybit_pub_key,
 		&db_info.bybit_priv_key,
-	)
-	.unwrap();
+	).unwrap();
 
-	//starts websockets
-	//tokio::spawn(ftx_ws::ftx_websocket(opts));
-
-	//gets terminal size
-	let size = terminal_size();
-	let mut terminal_is_wide = true;
-
-	//wide if width is more than 70 characters
-	if let Some((Width(width), Height(_h))) = size {
-		if width < 70 {
-			terminal_is_wide = false;
-		}
-	} else {
-		terminal_is_wide = false
-	}
-
-	//outputs version and ascii art
-	print!("{}[2J", 27 as char);
-	if terminal_is_wide {
-		utils::wideversion();
-	} else {
-		utils::slimversion();
-	};
-	println!();
-
-	let line_main_location = format!("{}main.txt", history_location().as_str());
-	if !std::path::Path::new(&line_main_location.to_string()).exists() {
-		std::fs::File::create(line_main_location.to_string()).unwrap();
-	}
-	let mut line_main = Editor::<()>::new();
-	line_main.load_history(&line_main_location).unwrap();
-
-	let mut loop_iteration: i32 = 1;
-
-	//function to synchronize what was missed when termcrypt was not running
+	// Synchronize missed executions when app was not running
 	match startup_sync(Some(&mut bybit_api)).await {
-		Ok(_x) => {/*:L*/}
-		Err(e) => {
-			println!();
-			eprintln!("!! Failed to sync (fatal) but termcrypt kept running: {:?} !!", e);
-			println!();
+		Ok(_x) => { /*:L*/ }
+		Err(_e) => {
+			command_history.insert(0, format!("Failed to sync trades with ws, but termcrypt kept running: {_e:?}"));
 		}
 	};
 
-	loop {
-		//Start of loop
-		//Takes input from user through terminal-like interface*/
-		let mut is_real_command = false;
-		let read_line =
-			line_main.readline(format!("[{}]({})> ", subaccount.as_str(), pair.as_str()).as_str());
+	// Initiates userspace (UI and main loop)
+	let mut userspace = UserSpace {
+		pair: db_info.bybit_default_pair.to_string(),
+		sub_account: db_info.bybit_default_sub.to_string(),
+		input_prefix: format!("[{}]({})>", db_info.bybit_default_sub.to_string(), db_info.bybit_default_pair.to_string()),
+		db_info,
+		// Initiates Bybit API (note: make option on multi exchanges)
+		bybit_api,
+		desktop_terminal,
+        input: String::new(),
+		command_history,
+		command_history_scroll_overflow: Vec::new(),
+		command_count: 0,
+		event_history: vec![
+			("You liquidated everything".to_string(), EventType::Warning),
+			("at 30202$ (BTC)".to_string(), EventType::SlFill),
+			("at 31902$ (BTC)".to_string(), EventType::EntryFill),
+			("at 2069$ (ETH)".to_string(), EventType::TpFill),
+			
+		],
+		tick_rate: Duration::from_millis(100),
+		stream_differ: 0,
+		input_old: String::new(),
+	};
 
-		match read_line {
-			Ok(read_line) => {
-				//add command to command history
-				line_main.add_history_entry(read_line.as_str());
-				
-				//command handling
-				match bybit_inter::handle_commands(bybit_inter::CommandHandling{
-					//make this a struct one day
-					command_input: read_line.as_str(),
-					current_sub_account: &mut subaccount,
-					current_pair: &mut pair,
-					bybit_api: &mut bybit_api,
-					//&mut q_account,
-					_terminal_is_wide: &mut terminal_is_wide,
-					database_info: &mut db_info,
-				})
-				.await
-				{
-					Ok(x) => {
-						if !is_real_command && x {
-							is_real_command = true
-						}
-					}
-					Err(e) => {
-						println!();
-						eprintln!("!! Function Exited: {:?} !!", e);
-						println!();
-						continue;
-					}
-				};
+	// Initiate terminal layout
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(
+		stdout,
+		EnterAlternateScreen,
+		EnableMouseCapture,
+		DisableBlinking,
+		terminal::SetTitle(format!("termcrypt v{VERSION}"))
+	)?;
 
-				//miscellaneous command handling
-				match misc::handle_commands(
-					//make this a struct one day
-					read_line.as_str(),
-					&mut terminal_is_wide,
-					loop_iteration,
-					//&mut db_info,
-				)
-				.await
-				{
-					Ok(x) => {
-						if x {
-							is_real_command = true
-						}
-					}
-					Err(e) => {
-						println!();
-						eprintln!("!! Function Exited: {:?} !!", e);
-						println!();
-						continue;
-					}
-				}
+	// Uses crossterm backend for terminal function reliability
+    let backend = CrosstermBackend::new(stdout);
+	// Create the tui terminal instance using crossterm
+    let mut terminal = Terminal::new(backend)?;
 
-				//adds padding
-				println!();
-			}
-			Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-				println!("Exiting...");
-				println!();
-				println!("{}", utils::boldt("Thank you for using termcrypt ;)"));
-				break;
-			}
-			Err(e) => {
-				println!();
-				eprintln!("!! Something bad happened, be scared: {:?} !!", e);
-				println!();
-				break;
-			}
-		}
-		if is_real_command {
-			line_main.append_history(&line_main_location).unwrap();
-		}
-		loop_iteration += 1;
-	}
+    // Create app and run it (main app)
+    userspace.run_app(&mut terminal).await?;
+
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture,
+    )?;
+    terminal.show_cursor()?;
+
+	// End credits
+	println!();
+	println!("{}", utils::boldt("Thank you for using termcrypt :)"));
+
+	Ok(())
 }

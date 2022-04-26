@@ -1,3 +1,4 @@
+extern crate alloc;
 use anyhow::{bail, Error, Result};
 //use chrono::{DateTime, Local};
 use bybit::{http, rest::*};
@@ -8,8 +9,8 @@ use rand::Rng;
 
 //use rust_decimal_macros::dec;
 
-use super::utils::{askout as ask, boldt};
 use super::misc::*;
+use super::utils::{askout as ask, boldt, termbug};
 
 pub fn database_location() -> String {
 	format!("{}/termcrypt/database", dirs::data_dir().unwrap().display())
@@ -22,12 +23,13 @@ pub fn history_location() -> String {
 pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 	let mut db = Database::open(database_location().as_str()).unwrap();
 
-	//set data point variables to specified db / default values
+	// Set data point variables to specified db / default values
 	let bybit_default_pair =
-		get_dbinf_by_entry(&mut db, "default_pair", Some("BTCUSDT"), None, false)?;
-	let bybit_default_sub = get_dbinf_by_entry(&mut db, "default_sub", Some("main"), None, false)?;
-	let ratio_warn_num = get_dbinf_by_entry(&mut db, "ratio_warn_num", Some("1"), None, false)?
-		.parse::<f64>()?;
+		get_dbinf_by_entry(&mut db, "bybit_default_pair", Some("BTCUSDT"), None, false)?;
+	let bybit_default_sub =
+		get_dbinf_by_entry(&mut db, "bybit_default_sub", Some("main"), None, false)?;
+	let ratio_warn_num =
+		get_dbinf_by_entry(&mut db, "ratio_warn_num", Some("1"), None, false)?.parse::<f64>()?;
 	let mut bybit_pub_key;
 	let mut bybit_priv_key;
 
@@ -55,6 +57,7 @@ pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 			endpoint: ftx::options::Endpoint::Com,
 		}); */
 
+		// Test Bybit API request to validate keys
 		let client =
 			http::Client::new(http::MAINNET_BYBIT, &bybit_pub_key, &bybit_priv_key).unwrap();
 		let options = FetchWalletFundRecordsOptions {
@@ -67,9 +70,10 @@ pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
 				Err(e) => {
 					println!();
 					println!("{}", boldt(format!("{}", e).as_str()));
+					println!();
 					println!(
 						"  {}",
-						boldt("!! Bybit API keys are not valid, please try again !!")
+						boldt("! Bybit API keys are not valid, please try again !")
 					);
 					force_retype = true;
 					continue;
@@ -104,16 +108,16 @@ pub fn get_dbinf_by_entry(
 			.unwrap()
 		{
 			Some(val) => {
-				//if value is found in collection
+				// If value is found in collection
 				val.get("value").unwrap().unwrap_string().to_string()
 			}
 			None => {
-				//if value is not found in collection
+				// If value is not found in collection
 				if let Some(default) = default_value {
-					//if there is default and not required custom, return default
+					// If there is default and not required custom, return default
 					default.to_string()
 				} else {
-					//if there is required value, ask user for input
+					// If there is required value, ask user for input
 					//print!("{}[2J", 27 as char);
 					println!();
 					println!(
@@ -127,7 +131,7 @@ pub fn get_dbinf_by_entry(
 			}
 		}
 	} else {
-		//this is to retype if required value was not valid
+		// This is to retype if required value was not valid
 		let input = ask(&format!("Please enter your {}", name.unwrap()), None)?;
 		db_insert_config(db, key_name, &input)?
 	};
@@ -144,27 +148,34 @@ pub fn db_insert_config(
 		"value": value
 	};
 
+	dbg!("{:?}", &document);
+
 	let inside = db_inside(db, document.as_mut());
 
 	let mut collection = db.collection("config").unwrap();
-	//checks if key already has a value
+	// Checks if key already has a value
+
 	if inside {
-		//updates the database entry with new values
-		collection
-			.update(
-				Some(&mk_document! { "_key": key_name }),
-				&mk_document! {
-				   "$set": mk_document! {
-					  "value": value
-				   }
-				},
-			)
-			.unwrap();
+		dbg!("debug:update");
+		// Updates the database entry with new values
+		println!(
+			"{:?}",
+			collection
+				.update(
+					Some(&mk_document! { "_key": key_name }),
+					&mk_document! {
+					   "$set": mk_document! {
+						  "value": value
+					   }
+					},
+				)
+				.unwrap()
+		)
 	} else {
-		//inserts a new database entry
+		dbg!("debug:insert");
+		// Inserts a new database entry
 		collection.insert(&mut document).unwrap();
 	}
-
 	Ok(value.to_string())
 }
 
@@ -202,7 +213,7 @@ pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
 
 	let all_trades = collection.find_all().unwrap();
 	let mut id: i64;
-	//makes sure id is not already in ftrades
+	// Makes sure id is not already in ftrades
 	loop {
 		id = rand::thread_rng().gen_range(10..999999);
 		let mut failed = false;
@@ -211,7 +222,9 @@ pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
 				failed = true;
 			}
 		}
-		if !failed {break}
+		if !failed {
+			break;
+		}
 	}
 
 	collection
@@ -252,72 +265,70 @@ pub fn db_insert_ftrade(td: Trade) -> Result<i64, Error> {
 	Ok(id)
 }
 
+pub fn db_ftrade_formatter(doc: alloc::rc::Rc<polodb_bson::Document>) -> Result<Option<Trade>> {
+	// If value is found in collection
+	let stop_loss = doc.get("stop_loss").unwrap().unwrap_string();
+	let take_profit = doc.get("take_profit").unwrap().unwrap_string();
+	let sl_id = doc.get("sl_id").unwrap().unwrap_string();
+	let tp_id = doc.get("tp_id").unwrap().unwrap_string();
+	let exchange = doc.get("exchange").unwrap().unwrap_string();
+	let filled = doc.get("filled").unwrap().unwrap_string();
+
+	let exchange_context = doc.get("exchange_context").unwrap().unwrap_string();
+	let entry_type = doc.get("entry_type").unwrap().unwrap_string();
+	let client_order_type = doc.get("client_order_type").unwrap().unwrap_string();
+	let direction = doc.get("direction").unwrap().unwrap_string();
+
+	Ok(Some(Trade {
+		_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<f64>()?),
+		sub_account_name: doc.get("sub_account_name").unwrap().unwrap_string().to_string(),
+		timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<i64>()?/*, "%s")?*/,
+		filled: filled == "true",
+		direction: if direction == "long" {OrderDirection::Long} else {OrderDirection::Short},
+		risk: doc.get("risk").unwrap().unwrap_string().parse::<f64>()?,
+		main_id: doc.get("main_id").unwrap().unwrap_string().to_string(),
+		stop_loss: if stop_loss.is_empty() {None} else {Some(stop_loss.parse::<f64>()?)},
+		take_profit: if take_profit.is_empty() {None} else {Some(take_profit.parse::<f64>()?)},
+		sl_id: if sl_id.is_empty() {None} else {Some(sl_id.to_string())},
+		tp_id: if tp_id.is_empty() {None} else {Some(tp_id.to_string())},
+		exchange: match exchange {
+			"ftx" => {Exchange::Ftx},
+			"bybit" => {Exchange::Bybit}
+			_ => {bail!(format!("Exchange: <{:?}> is not available (yet).", exchange))}
+		},
+		exchange_context: match exchange_context {
+			"bybit_inverse" => {ExchangeContext::BybitInverse},
+			"bybit_linear" => {ExchangeContext::BybitLinear},
+			_ => {bail!(format!("Exchange context: <{:?}> is not available (yet).", exchange_context))}
+		},
+		entry_type: match entry_type {
+			"market" => {EntryType::Market},
+			"limit" => {EntryType::Limit}
+			_ => {bail!(format!("Entry type: <{:?}> is not available (yet).", entry_type))}
+		},
+		client_order_type: match client_order_type {
+			"market" => {OrderEntryType::Market},
+			"limit" => {OrderEntryType::Limit},
+			"conditional" => {OrderEntryType::Conditional},
+			"orderbook" => {OrderEntryType::OrderBook},
+			_ => {bail!(format!("Client order type: <{:?}> is not available (yet).", client_order_type))}
+		}
+	}))
+}
+
 pub fn _db_get_ftrade(id: i64) -> Result<Option<Trade>, Error> {
 	let mut db = Database::open(database_location().as_str()).unwrap();
 	let mut collection = db.collection("ftrades").unwrap();
 	match collection.find_one(&mk_document! {"_id": id}).unwrap() {
 		Some(doc) => {
-			//if value is found in collection
-			let stop_loss = doc.get("stop_loss").unwrap().unwrap_string();
-			let take_profit = doc.get("take_profit").unwrap().unwrap_string();
-			let sl_id = doc.get("sl_id").unwrap().unwrap_string();
-			let tp_id = doc.get("tp_id").unwrap().unwrap_string();
-			let exchange = doc.get("exchange").unwrap().unwrap_string();
-			let filled = doc.get("filled").unwrap().unwrap_string();
-
-			let exchange_context = doc.get("exchange_context").unwrap().unwrap_string();
-			let entry_type = doc.get("entry_type").unwrap().unwrap_string();
-			let client_order_type = doc.get("client_order_type").unwrap().unwrap_string();
-			let direction = doc.get("direction").unwrap().unwrap_string();
-			
-			Ok(Some(Trade {
-				_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<f64>()?),
-				sub_account_name: doc.get("sub_account_name").unwrap().unwrap_string().to_string(),
-				timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<i64>()?/*, "%s")?*/,
-				filled: filled == "true",
-				direction: if direction == "long" {OrderDirection::Long} else {OrderDirection::Short},
-				risk: doc.get("risk").unwrap().unwrap_string().parse::<f64>()?,
-				main_id: doc.get("main_id").unwrap().unwrap_string().to_string(),
-				stop_loss: if stop_loss.is_empty() {None} else {Some(stop_loss.parse::<f64>()?)},
-				take_profit: if take_profit.is_empty() {None} else {Some(take_profit.parse::<f64>()?)},
-				sl_id: if sl_id.is_empty() {None} else {Some(sl_id.to_string())},
-				tp_id: if tp_id.is_empty() {None} else {Some(tp_id.to_string())},
-				exchange: match exchange {
-					"ftx" => {Exchange::Ftx},
-					"bybit" => {Exchange::Bybit}
-					_ => {bail!(format!("Exchange: <{:?}> is not available (yet).", exchange))}
-				},
-				exchange_context: match exchange_context {
-					"bybit_inverse" => {ExchangeContext::BybitInverse},
-					"bybit_linear" => {ExchangeContext::BybitLinear},
-					_ => {bail!(format!("Exchange context: <{:?}> is not available (yet).", exchange_context))}
-				},
-				entry_type: match entry_type {
-					"market" => {EntryType::Market},
-					"limit" => {EntryType::Limit}
-					_ => {bail!(format!("Entry type: <{:?}> is not available (yet).", entry_type))}
-				},
-				client_order_type: match client_order_type {
-					"market" => {OrderEntryType::Market},
-					"limit" => {OrderEntryType::Limit},
-					"conditional" => {OrderEntryType::Conditional},
-					"orderbook" => {OrderEntryType::OrderBook},
-					_ => {bail!(format!("Client order type: <{:?}> is not available (yet).", client_order_type))}
-				}
-			}))
+			Ok(db_ftrade_formatter(doc)?)
 		}
 		None => {
-			//if value is not found in collection
+			// If value is not found in collection
 			Ok(None)
 		}
 	}
 }
-
-pub fn db_wipe_trades() {
-	let mut db = Database::open(database_location().as_str()).unwrap();
-	db.collection("ftrades").unwrap().delete(None).unwrap();
-}
-
 
 pub fn db_get_ftrades() -> Result<Vec<Trade>, Error> {
 	let mut db = Database::open(database_location().as_str()).unwrap();
@@ -326,56 +337,15 @@ pub fn db_get_ftrades() -> Result<Vec<Trade>, Error> {
 	let mut trade_array: Vec<Trade> = Vec::with_capacity(all_trades.len());
 
 	for doc in all_trades {
-		let stop_loss = doc.get("stop_loss").unwrap().unwrap_string();
-		let take_profit = doc.get("take_profit").unwrap().unwrap_string();
-		let sl_id = doc.get("sl_id").unwrap().unwrap_string();
-		let tp_id = doc.get("tp_id").unwrap().unwrap_string();
-		let exchange = doc.get("exchange").unwrap().unwrap_string();
-		let filled = doc.get("filled").unwrap().unwrap_string();
-
-		let exchange_context = doc.get("exchange_context").unwrap().unwrap_string();
-		let entry_type = doc.get("entry_type").unwrap().unwrap_string();
-		let client_order_type = doc.get("client_order_type").unwrap().unwrap_string();
-		let direction = doc.get("direction").unwrap().unwrap_string();
-
 		trade_array.push(
-			Trade {
-				_id: Some(doc.get("_id").unwrap().unwrap_int().to_string().parse::<f64>()?),
-				sub_account_name: doc.get("sub_account_name").unwrap().unwrap_string().to_string(),
-				timestamp_open: /*DateTime::parse_from_str(*/doc.get("timestamp_open").unwrap().unwrap_string().parse::<i64>()?/*, "%s")?*/,
-				filled: filled == "true",
-				direction: if direction == "long" {OrderDirection::Long} else {OrderDirection::Short},
-				risk: doc.get("risk").unwrap().unwrap_string().parse::<f64>()?,
-				main_id: doc.get("main_id").unwrap().unwrap_string().to_string(),
-				stop_loss: if stop_loss.is_empty() {None} else {Some(stop_loss.parse::<f64>()?)},
-				take_profit: if take_profit.is_empty() {None} else {Some(take_profit.parse::<f64>()?)},
-				sl_id: if sl_id.is_empty() {None} else {Some(sl_id.to_string())},
-				tp_id: if tp_id.is_empty() {None} else {Some(tp_id.to_string())},
-				exchange: match exchange {
-					"ftx" => {Exchange::Ftx},
-					"bybit" => {Exchange::Bybit}
-					_ => {bail!(format!("Exchange: <{:?}> is not available (yet).", exchange))}
-				},
-				exchange_context: match exchange_context {
-					"bybit_inverse" => {ExchangeContext::BybitInverse},
-					"bybit_linear" => {ExchangeContext::BybitLinear},
-					_ => {bail!(format!("Exchange context: <{:?}> is not available (yet).", exchange_context))}
-				},
-				entry_type: match entry_type {
-					"market" => {EntryType::Market},
-					"limit" => {EntryType::Limit}
-					_ => {bail!(format!("Entry type: <{:?}> is not available (yet).", entry_type))}
-				},
-				client_order_type: match client_order_type {
-					"market" => {OrderEntryType::Market},
-					"limit" => {OrderEntryType::Limit},
-					"conditional" => {OrderEntryType::Conditional},
-					"orderbook" => {OrderEntryType::OrderBook},
-					_ => {bail!(format!("Client order type: <{:?}> is not available (yet).", client_order_type))}
-				}
-			}
+			db_ftrade_formatter(doc)?.unwrap()
 		);
 	}
-
 	Ok(trade_array)
+}
+
+
+pub fn db_wipe_trades() {
+	let mut db = Database::open(database_location().as_str()).unwrap();
+	db.collection("ftrades").unwrap().delete(None).unwrap();
 }
