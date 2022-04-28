@@ -14,21 +14,23 @@ use crossterm::{
     execute,
     terminal::{self, disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use terminal_size::{terminal_size, Height, Width};
-use unicode_width::UnicodeWidthStr;
 
-mod bybit_exchange;
+mod bybit_core;
 mod db;
-mod misc;
+mod misc_commands;
 mod sync;
 mod utils;
 mod ws;
 mod userspace;
+mod command_handling;
+mod orders;
 
-use bybit_exchange::bybit_inter;
+use bybit_core::{bybit_commands::{self, BybitStruct}};
 use db::{get_db_info, history_location};
 use sync::*;
-use utils::{bl, termbug, terminal_width};
+use utils::{termbug, terminal_width};
+//use command_handling;
+use userspace::EventLogType;
 
 // Cargo information
 static VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -50,13 +52,11 @@ pub struct Config {
 	pub ratio_warn_num: f64,
 }
 
-// Enabled exchanges (use this when implementing multiple exchanges)
+// Available exchanges; bool inside is for if that exchange is enabled (set up) or not
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EnabledExchanges {
-	// bybit.com
-	pub bybit: bool,
-	// ftx.com
-	pub ftx: bool,
+pub enum ActiveExchanges {
+	Bybit(bool),
+	Ftx(bool),
 }
 
 // UI display arrangements
@@ -75,20 +75,6 @@ pub enum UILocation {
 	Main,
 	// Background output stream (fills, etc)
 	Events
-}
-
-// Event notification type for the events widget
-pub enum EventType {
-	// Entry filled
-	EntryFill,
-	// Take-profit filled
-	TpFill,
-	// Stoploss filled
-	SlFill,
-	// Significant warning
-	Warning,
-	// Empty message
-	Empty
 }
 
 // Userspace state
@@ -116,7 +102,7 @@ pub struct UserSpace {
 	// Count of user commands
 	pub command_count: u32,
 	// Events (orders etc) history
-	pub event_history: Vec<(String, EventType)>,
+	pub event_history: Vec<(String, EventLogType)>,
 	// Tick rate of UI
 	pub tick_rate: Duration,
 	// Stream difference
@@ -126,6 +112,14 @@ pub struct UserSpace {
 // Where the program starts :)
 #[tokio::main]
 async fn main() -> AnyHowResult<(), AnyHowError> {
+	/* Use these args in the future
+	let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
+	loop {}
+	*/
+
+	
+	
 	// Creates termcrypt data folder & history subfolder if does not exist
 	let _x = fs::create_dir_all(history_location().as_str()).unwrap_or_else(|_| {
 		panic!("COULD NOT CREATE HISTORY DIRECTORY")
@@ -170,10 +164,10 @@ async fn main() -> AnyHowResult<(), AnyHowError> {
 		command_history_scroll_overflow: Vec::new(),
 		command_count: 0,
 		event_history: vec![
-			("You liquidated everything".to_string(), EventType::Warning),
-			("at 30202$ (BTC)".to_string(), EventType::SlFill),
-			("at 31902$ (BTC)".to_string(), EventType::EntryFill),
-			("at 2069$ (ETH)".to_string(), EventType::TpFill),
+			("You liquidated everything".to_string(), EventLogType::Warning),
+			("at 30202$ (BTC)".to_string(), EventLogType::SlFill),
+			("at 31902$ (BTC)".to_string(), EventLogType::EntryFill),
+			("at 2069$ (ETH)".to_string(), EventLogType::TpFill),
 			
 		],
 		tick_rate: Duration::from_millis(50),

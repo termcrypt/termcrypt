@@ -8,7 +8,6 @@ use rustyline::Editor;
 
 use crate::{
 	UserSpace,
-	UILocation::*,
 	db::history_location
 };
 
@@ -122,30 +121,15 @@ pub fn wideversion(us: &mut UserSpace) {
 
 // Output ascii art to the user
 pub fn output_ascii(us: &mut UserSpace) {
-	let ascii: [String; 5] = [
+	let ascii: [String; 4] = [
 		String::new(),
 		" <termcrypt>".to_string(),
 		String::new(),
-		format!("  v{} License: 🟢 AGPL3+", crate::VERSION),
-		String::new(),
+		format!("  v{} License: 🟢 AGPL3+", crate::VERSION)
 	];
 
 	for item in ascii {
 		us.prnt(item)
-	}
-}
-
-// Shortcut for printing blank line
-pub fn bl(us: &mut UserSpace) {
-	us.prnt(String::new());
-}
-
-// Shortcut for printing multiple blank lines
-pub fn _mbl(count: i32) {
-	let mut i = 0;
-	while i < count {
-		println!();
-		i += 1
 	}
 }
 
@@ -156,7 +140,7 @@ pub fn sub_strings(string: String, split_len: usize) -> Vec<String> {
     let mut pos = 0;
 
 	// Case if "" is passed
-	if string.len() == 0 {
+	if string.is_empty() {
 		return vec!["".to_string()]
 	};
 
