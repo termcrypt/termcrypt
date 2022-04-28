@@ -21,6 +21,7 @@ jniLibs/
 
 db/
 
+# Testing files/folders
 src/ftxtest/
-
 .programmernotes.txt
+.garbage
