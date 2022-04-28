@@ -1,4 +1,4 @@
-use super::bybit_exchange::bybit_sync::*;
+use crate::bybit_core::bybit_sync::*;
 use anyhow::{Error as AnyHowError, Result};
 
 // Function to syncronize what was missed when termcrypt was not running
