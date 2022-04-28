@@ -79,6 +79,10 @@ impl<B: Backend + std::marker::Send> Command<'_, B> {
             "ping" => misc_commands::ping_pong(self.us).await?,
             // Get amount of commands used this session
             "count" => misc_commands::command_count(self.us).await?,
+            // MOOOOOOOOOOOOOo
+            
+            // Commmands with args
+            command if command.starts_with("cowsay ") => misc_commands::cowsay(self.us, command).await?,
 
             // Testing commands
 

@@ -244,6 +244,35 @@ pub async fn command_count(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> 
 	Ok(())
 }
 
+pub async fn cowsay(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHowError> {
+	let message: String = command.split("cowsay ").collect();
+	let mut top = String::new();
+	let mut bottom = String::new();
+
+	for _x in 1..message.len() {
+		top += "_";
+		bottom += "-";
+	}
+
+	let cow = [
+		format!(" ___{}", top),
+		format!("< {} >", message),
+		format!(" ---{}", bottom),
+		r"        \   ^__^".to_string(),
+		r"         \  (oo)\".to_string(),
+		r"            (__)\       )\/\".to_string(),
+		r"                ||----w |".to_string(),
+		r"                ||     ||".to_string()
+
+	];
+
+	for line in cow {
+		us.prnt(line.to_string())
+	}
+
+	Ok(())
+}
+
 // Testing commands (for developer use)
 
 pub async fn trade_fetch(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
