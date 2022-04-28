@@ -1,33 +1,52 @@
 use tui::{
 	style::{Color, Style},
     backend::{Backend},
-    widgets::{Widget, Block, Borders, Paragraph, List, ListItem, Wrap},
+    widgets::{Block, Borders, Paragraph, List, ListItem, Wrap},
     layout::{Alignment, Layout, Constraint, Direction, Corner},
 	text::{Span, Spans, Text},
-    Terminal, Frame
+    Terminal, Frame,
 };
 use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
-use std::time::{Duration, Instant};
+use std::{
+	time::{Duration, Instant},
+};
 use crossterm::event::{self, Event, KeyCode, KeyModifiers, MouseEventKind};
+use unicode_width::UnicodeWidthStr;
 
-use crate::*;
-use crate::utils::sub_strings;
+use crate::{
+	//ActiveExchanges,
+	UserSpace,
+	command_handling,
+	*,
+	utils::{
+		self,
+		sub_strings,
+		terminal_width,
+	}
+};
 
-impl crate::UserSpace {
+// Event notification type for the events widget
+pub enum EventLogType {
+	// Entry filled
+	EntryFill,
+	// Take-profit filled
+	TpFill,
+	// Stoploss filled
+	SlFill,
+	// Significant warning
+	Warning,
+	// Empty message
+	Empty,
+}
+
+impl<'a> crate::UserSpace {
     // Run the app and UI
-	pub async fn run_app<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
+	pub async fn run_app<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
 		let mut last_tick = Instant::now();
 
-        // Outputs version and ascii art
-        /*
-        if self.desktop_terminal {
-            utils::wideversion(self);
-        } else {
-            utils::slimversion(self);
-        };
-        */
-        bl(self);
+		// Ascii art output
         utils::output_ascii(self);
+		self.bl();
 
 		loop {
 			terminal.draw(|f| Self::ui(f, self))?;
@@ -38,7 +57,8 @@ impl crate::UserSpace {
 			
 			// Only stops updating UI when it needs to
        		if crossterm::event::poll(timeout)? {
-				if let Event::Key(key) = event::read()? {
+                let evvent = event::read()?;
+				if let Event::Key(key) = evvent {
 					if key.modifiers == KeyModifiers::CONTROL {
 						match key.code {
 							KeyCode::Char('c') => {
@@ -90,7 +110,7 @@ impl crate::UserSpace {
 							_ => {}
 						}
 					}
-				} else if let Event::Mouse(mouse) = event::read()? {
+				} else if let Event::Mouse(mouse) = evvent {
                     match mouse.kind {
                         MouseEventKind::ScrollDown => {
                             for _x in 1..4 {
@@ -143,18 +163,18 @@ impl crate::UserSpace {
             .iter()
             .map(|(event_msg, event_type)| {
                 let style = match event_type {
-                    EventType::EntryFill => Style::default().fg(Color::Blue), 
-                    EventType::SlFill => Style::default().fg(Color::Gray),
-                    EventType::TpFill => Style::default().fg(Color::Green),
-                    EventType::Warning => warning_style,
+                    EventLogType::EntryFill => Style::default().fg(Color::Blue), 
+                    EventLogType::SlFill => Style::default().fg(Color::Gray),
+                    EventLogType::TpFill => Style::default().fg(Color::Green),
+                    EventLogType::Warning => warning_style,
                     _ => warning_style,
                 };
                 let type_wording = match event_type {
-                    EventType::EntryFill => "ENTRY",
-                    EventType::TpFill => "TAKEPRFT",
-                    EventType::SlFill => "STOPLOSS",
-                    EventType::Warning => "WARNING",
-                    EventType::Empty => "",
+                    EventLogType::EntryFill => "ENTRY",
+                    EventLogType::TpFill => "TAKEPRFT",
+                    EventLogType::SlFill => "STOPLOSS",
+                    EventLogType::Warning => "WARNING",
+                    EventLogType::Empty => "",
                     //_ => "INFO"
                 };
                 let content = vec![Spans::from(vec![
@@ -219,7 +239,7 @@ impl crate::UserSpace {
         let mut wrapped_command_history: Vec<String> = Vec::new();
         let commands_widget_width = terminal_width()-3;
 
-        for line in app.command_history.to_owned() {
+        for line in app.command_history.iter().cloned() {
             for sub_string in sub_strings(line, commands_widget_width.into()) {
                 wrapped_command_history.push(sub_string);
             }
@@ -259,6 +279,21 @@ impl crate::UserSpace {
 		self.command_history.insert(0, text);
         self.stream_differ += 1;     
     }
+
+	// Print a blank line
+	pub fn bl(&mut self) {
+		self.prnt(String::new());
+	}
+
+	// Print multiple blank lines
+	pub fn _mbl(&mut self, count: u16) {
+		let mut i = 0;
+		while i < count {
+			self.prnt(String::new());
+			i += 1;
+		}
+		self.stream_differ += i;
+	}
 
     // Clear past commands from UI
     pub fn clear_commands(&mut self) {
@@ -341,132 +376,27 @@ impl crate::UserSpace {
     }
 
     // Handle user input through the input widget
-	async fn handle_input<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
-        // Match against miscellaneous commands
-		match misc::handle_commands(
-            self
-		).await {
-			Ok(x) => {
-				if x {
-					//is_real_command = true
-				}
-			}
-			Err(_e) => {
-				termbug::error(format!("Function Exited: {_e:?}"), self);
-				//continue;
-			}
-		}
+	async fn handle_input<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
+		let chosen_exchange = &BybitStruct{} as &dyn command_handling::CommandHandling<B>;
 
-        // Match against Bybit commands
-        match bybit_inter::handle_commands(
-            self,
-            terminal
-		).await {
-			Ok(x) => {
-				if x {
-					//is_real_command = true
-				}
-			}
+		//let chosen_exchange: Box<dyn command_handling::CommandHandling> = Box::new(obj);
+		let mut command = command_handling::Command {
+			command: self.input_old.to_string(),
+			exchange: chosen_exchange,
+			us: self,
+			terminal
+		};
+
+    	let _real_command = match command.find().await {
+			Ok(x) => x,
 			Err(_e) => {
 				termbug::error(format!("Function Exited: {_e:?}"), self);
-				//continue;
+				true
 			}
-		}
+		};
+
+		// Use real_command when history is added
 
 		Ok(())
 	}
-
-
-
-    /*
-	async fn loopy(mut self) -> AnyHowResult<(), AnyHowError> {
-		// Check user input history location exists
-		let line_main_location = format!("{}main.txt", history_location().as_str());
-		if !std::path::Path::new(&line_main_location).exists() {
-			std::fs::File::create(&line_main_location)?;
-		}
-
-		// User input space with history
-		let mut line_main = Editor::<()>::new();
-		line_main.load_history(&line_main_location)?;
-
-		// Loop iteration number (amount of commands in session)
-		let mut command_count: u32 = 1;
-
-		let mut is_real_command = false;
-		// Takes input through CLI
-		let read_line =
-			line_main.readline(format!("[{}]({})> ", self.sub_account.as_str(), self.pair.as_str()).as_str());
-
-		match read_line {
-			Ok(read_line) => {
-				// Add command to command history
-				line_main.add_history_entry(read_line.as_str());
-
-				// Command handling for Bybit exchange
-				match bybit_inter::handle_commands(bybit_inter::CommandHandling {
-					command_input: read_line.as_str(),
-					current_sub_account: &mut self.sub_account,
-					current_pair: &mut self.pair,
-					bybit_api: &mut self.bybit_api,
-					//&mut q_account,
-					_terminal_is_wide: &mut self.desktop_terminal,
-					database_info: &self.db_info,
-				})
-				.await
-				{
-					Ok(x) => {
-						if x {
-							is_real_command = true
-						}
-					}
-					Err(_e) => {
-						bl();
-						// Typing "q" can cause this
-						termbug::error("Function Exit: {_e:?}");
-						bl();
-						//continue;
-					}
-				};
-
-				// Exchange-unrelated miscellaneous commands
-				match misc::handle_commands(
-					// Make this a struct one day (surely pepelaugh)
-					read_line.as_str(),
-					&mut self.desktop_terminal,
-					command_count,
-					//&mut db_info,
-				)
-				.await
-				{
-					Ok(x) => {
-						if x {
-							is_real_command = true
-						}
-					}
-					Err(_e) => {
-						termbug::error("Function Exited: {_e:?}");
-						//continue;
-					}
-				}
-
-				// Add padding
-				bl();
-			}
-			Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-				//break;
-			}
-			Err(_e) => {
-				termbug::error("Cannot Readline: {_e:?}");
-				//break;
-			}
-		}
-		if is_real_command {
-			line_main.append_history(&line_main_location)?;
-		}
-		command_count += 1;
-		
-		Ok(())
-	}
-    */
 }
