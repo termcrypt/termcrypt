@@ -1390,7 +1390,6 @@ dependencies = [
  "serde",
  "terminal_size",
  "tokio",
- "trait_enum",
  "tui",
  "unicode-width",
 ]
@@ -1566,11 +1565,6 @@ checksum = "f54c8ca710e81886d498c2fd3331b56c93aa248d49de2222ad2742247c60072f"
 dependencies = [
  "lazy_static",
 ]
-
-[[package]]
-name = "trait_enum"
-version = "0.5.0"
-source = "git+https://github.com/peepopoggers/trait_enum?branch=master#5e54c1054a358cd0e4f11329780222938e9b9608"
 
 [[package]]
 name = "try-lock"

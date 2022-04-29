@@ -30,7 +30,6 @@ rustyline = "^9.0.0"
 terminal_size = "^0.1.17"
 tokio = { version = "1", features = ["full"] }
 #trait_enum = "0.5.0"
-trait_enum = { git = "https://github.com/peepopoggers/trait_enum", branch = "master" }
 tui = "^0.18.0"
 unicode-width = "0.1"
 #ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }

@@ -259,11 +259,10 @@ pub async fn cowsay(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHo
 		format!("< {} >", message),
 		format!(" ---{}", bottom),
 		r"        \   ^__^".to_string(),
-		r"         \  (oo)\".to_string(),
+		r"         \  (oo)\_______".to_string(),
 		r"            (__)\       )\/\".to_string(),
-		r"                ||----w |".to_string(),
-		r"                ||     ||".to_string()
-
+		"                ||----w |".to_string(),
+		"                ||     ||".to_string()
 	];
 
 	for line in cow {
