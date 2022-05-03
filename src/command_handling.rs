@@ -2,12 +2,20 @@ use async_trait::async_trait;
 use crate::{
     UserSpace,
     misc_commands,
+    *
 };
 use tui::{
     backend::Backend,
     Terminal,
 };
-use anyhow::{Error as AnyHowError, Result as AnyHowResult};
+use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
+
+pub fn api_check<T>(api: Option<T>) -> AnyHowResult<T, AnyHowError> {
+    if api.is_none() {
+        bail!("api keys needed")
+    }
+    Ok(api.unwrap())
+}
 
 #[async_trait]
 pub trait CommandHandling<B: Backend + std::marker::Send>: Sync {
@@ -15,6 +23,7 @@ pub trait CommandHandling<B: Backend + std::marker::Send>: Sync {
     async fn balance(&self, _us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {Ok(())}
     async fn order(&self, _us: &mut UserSpace, _terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {Ok(())}
     async fn config_defaults(&self, _us: &mut UserSpace, _terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {Ok(())}
+    async fn setup_api_keys(&self, _us: &mut UserSpace, _terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {Ok(())}
     // Commands with args
     async fn search(&self, _us: &mut UserSpace, _terminal: &mut Terminal<B>, _command: &str) -> AnyHowResult<(), AnyHowError> {Ok(())}
     async fn change_pair(&self, _us: &mut UserSpace, _terminal: &mut Terminal<B>, _command: &str) -> AnyHowResult<(), AnyHowError> {Ok(())}
@@ -22,15 +31,15 @@ pub trait CommandHandling<B: Backend + std::marker::Send>: Sync {
 
 pub struct Command<'a, B: Backend + std::marker::Send> {
     pub command: String,
-    pub exchange: &'a dyn CommandHandling<B>,
+    pub exchange: Box<dyn CommandHandling<B>>,
     pub us: &'a mut UserSpace,
     pub terminal: &'a mut Terminal<B>
 }
 
 impl<B: Backend + std::marker::Send> Command<'_, B> {
-    pub async fn find(&mut self) -> AnyHowResult<bool, AnyHowError>{
-        let command = self.command.as_str();
+    pub async fn find(&mut self) -> AnyHowResult<bool, AnyHowError> {
 
+        let command = self.command.as_str();
         let mut real_command = true;
 
         match command {
@@ -47,6 +56,8 @@ impl<B: Backend + std::marker::Send> Command<'_, B> {
             "order" | "o" | "m" | "l" | "ob" => {self.exchange.order(self.us, self.terminal).await?}
             // Change defaults (exchange specific)
             "defaults" | "default" | "def" => {self.exchange.config_defaults(self.us, self.terminal).await?}
+            // Change API keys
+            "keys" => {self.exchange.setup_api_keys(self.us, self.terminal).await?}
 
             // Commands with args
 
@@ -79,12 +90,15 @@ impl<B: Backend + std::marker::Send> Command<'_, B> {
             "ping" => misc_commands::ping_pong(self.us).await?,
             // Get amount of commands used this session
             "count" => misc_commands::command_count(self.us).await?,
-            // MOOOOOOOOOOOOOo
             
             // Commmands with args
+
+            // Switches active exchange to user choice
+            command if command.starts_with("switch ") => misc_commands::switch_exchange(self.us, command).await?,
+            // MOOOOOOOOOOOOOO
             command if command.starts_with("cowsay ") => misc_commands::cowsay(self.us, command).await?,
 
-            // Testing commands
+            // Commands for testing/dev
 
             "trade_fetch" => misc_commands::trade_fetch(self.us).await?,
             "trade_wipe" => misc_commands::trade_wipe(self.us).await?,
