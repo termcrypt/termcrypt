@@ -16,7 +16,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
 	//ActiveExchanges,
 	UserSpace,
-	command_handling,
+	command_handling::{self, CommandHandling},
 	*,
 	utils::{
 		self,
@@ -26,6 +26,7 @@ use crate::{
 };
 
 // Event notification type for the events widget
+#[derive(Debug, Clone)]
 pub enum EventLogType {
 	// Entry filled
 	EntryFill,
@@ -48,7 +49,12 @@ impl<'a> crate::UserSpace {
         utils::output_ascii(self);
 		self.bl();
 
+		// Update data to exchange defaults
+		self.use_db_defaults()?;
+
 		loop {
+			self.input_prefix = format!("[{}]({})>", self.sub_account, self.pair);
+
 			terminal.draw(|f| Self::ui(f, self))?;
 			
 			let timeout = self.tick_rate
@@ -74,24 +80,37 @@ impl<'a> crate::UserSpace {
 					} else {
 						match key.code {
 							KeyCode::Enter => {
-								self.command_count += 1;
+								// Scroll back to bottom
+								while !self.command_history_scroll_overflow.is_empty() {
+                                    let e = self.command_history_scroll_overflow[0].to_owned();
+                                    self.command_history.insert(0, e);
+									self.command_history_scroll_overflow.remove(0);
+								}
+								terminal.draw(|f| Self::ui(f, self))?;
 
+								self.command_count += 1;
                                 let sustained_input = self.input.to_owned();
 
                                 // Remove user input as the function is processing
                                 self.input_old = self.input.to_owned();
-                                self.input = "".to_string();
+
+                                //self.input = "".to_string();
+								//self.input = format!("{}", self.input.to_owned());
+								//terminal.draw(|f| Self::ui(f, self))?;
 
                                 let mut formatted_input = format!("{} {}", self.input_prefix, sustained_input);
                                 // Make sure not to add command to terminal if clear command was run
+
                                 if sustained_input != "clr" && sustained_input != "clear" && sustained_input != "aclear" {
 								    self.command_history.insert(0, formatted_input.drain(..).collect());
                                 }
 
+								// Makes terminal look like it is loading
                                 let unwiped_prefix = self.input_prefix.to_owned();
-                                self.input_prefix = String::new();
-                                terminal.draw(|f| Self::ui(f, self))?;
-
+								self.input_prefix = "...".to_string();
+								self.input = "".to_string();
+								terminal.draw(|f| Self::ui(f, self))?;
+								
                                 // Handle the input for miscellaneous commands and exchanges
 								self.handle_input(terminal).await?;
 
@@ -148,7 +167,7 @@ impl<'a> crate::UserSpace {
 	}
 	
     // User interface for tui to render to the terminal
-	fn ui<B: Backend>(f: &mut Frame<B>, app: &UserSpace) {
+	pub fn ui<B: Backend>(f: &mut Frame<B>, app: &UserSpace) {
 		let chunks = Layout::default()
 			.direction(Direction::Vertical)
 			.margin(0)
@@ -215,7 +234,7 @@ impl<'a> crate::UserSpace {
         // The block for the section containing the input bar and output messages
 		let commands_section = Block::default()
 			.borders(Borders::ALL)
-			.title("Commands")
+			.title(app.active_exchange.to_string())
 			.title_alignment(Alignment::Left);
 		f.render_widget(commands_section, chunks[1]);
 
@@ -223,7 +242,7 @@ impl<'a> crate::UserSpace {
 		let terminal_interactive_section = Layout::default()
 			.direction(Direction::Vertical)
 			.margin(1)
-			.constraints([Constraint::Percentage(95), Constraint::Max(1)])
+			.constraints([Constraint::Percentage(99), Constraint::Max(1)])
 			.split(chunks[1]);
 
         // Place cursor after the input prefix
@@ -303,7 +322,8 @@ impl<'a> crate::UserSpace {
 
     // In-built function to ask user for input for post-command input
     pub async fn ask_input<B: Backend>(&mut self, prefix: &str, terminal: &mut Terminal<B>, _history_save_name: Option<&str>) -> AnyHowResult<String, AnyHowError> {
-        let old_prefix = self.input_prefix.to_owned();
+        self.input = "".to_string();
+		let old_prefix = self.input_prefix.to_owned();
         let mut last_tick = Instant::now();
 
         self.input_prefix = format!(" [{}]>", prefix);
@@ -377,7 +397,21 @@ impl<'a> crate::UserSpace {
 
     // Handle user input through the input widget
 	async fn handle_input<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
-		let chosen_exchange = &BybitStruct{} as &dyn command_handling::CommandHandling<B>;
+		// Start exchange instance
+
+		let chosen_exchange: Box<dyn CommandHandling<B>> = match self.active_exchange {
+			Exchange::Bybit => {
+				let bybit_struct = BybitStruct {
+					bybit_api: self.db_info.bybit_api.clone()
+				};
+				Box::new(bybit_struct) as Box<dyn CommandHandling<B>>
+			},
+			Exchange::Ftx => {
+				Box::new(FtxStruct {}) as Box<dyn CommandHandling<B>>
+			}
+		};
+
+		//let chosen_exchange = exchange_struct as &dyn command_handling::CommandHandling<B>;
 
 		//let chosen_exchange: Box<dyn command_handling::CommandHandling> = Box::new(obj);
 		let mut command = command_handling::Command {
@@ -396,6 +430,34 @@ impl<'a> crate::UserSpace {
 		};
 
 		// Use real_command when history is added
+
+		Ok(())
+	}
+
+	pub async fn switch_exchange(&mut self, new_exchange: Exchange) -> AnyHowResult<(), AnyHowError>{
+		self.db_info = get_db_info().await?;
+		self.active_exchange = new_exchange;
+		self.use_db_defaults()?;
+		Ok(())
+	}
+
+	pub fn use_db_defaults(&mut self) -> AnyHowResult<(), AnyHowError> {
+		let sub_account: String;
+		let pair: String;
+
+		match self.active_exchange {
+			Exchange::Bybit => {
+				sub_account = self.db_info.bybit_default_sub.to_owned();
+				pair = self.db_info.bybit_default_pair.to_owned();
+			}
+			Exchange::Ftx => {
+				sub_account = self.db_info.ftx_default_sub.to_owned();
+				pair = self.db_info.ftx_default_pair.to_owned();
+			}
+		}
+
+		self.sub_account = sub_account;
+		self.pair = pair;
 
 		Ok(())
 	}
