@@ -1,15 +1,15 @@
 extern crate alloc;
 use anyhow::{bail, Error, Result};
-use bybit::{http, rest::*};
 use polodb_bson::mk_document;
 use polodb_core::Database;
+use bybit::http;
 use rand::Rng;
 
 //use rust_decimal_macros::dec;
 
 use crate::{
+	Exchange,
 	orders::*,
-	utils::{askout as ask, boldt}
 };
 
 pub fn database_location() -> String {
@@ -20,120 +20,62 @@ pub fn history_location() -> String {
 	format!("{}/termcrypt/history/", dirs::data_dir().unwrap().display())
 }
 
-pub async fn get_db_info(checkapi: bool) -> Result<super::Config, Error> {
+pub async fn get_db_info() -> Result<super::Config, Error> {
 	let mut db = Database::open(database_location().as_str()).unwrap();
 
+	let bybit_pub_key = get_db_entry(&mut db, "bybit_pub_key", None)?;
+	let bybit_priv_key = get_db_entry(&mut db, "bybit_priv_key", None)?;
+
+	let bybit_api = if bybit_pub_key.is_some() && bybit_priv_key.is_some() {
+		Some(http::Client::new(
+			http::MAINNET_BYBIT,
+			&bybit_pub_key.unwrap(),
+			&bybit_priv_key.unwrap(),
+		).unwrap())
+	} else {
+		None
+	};
+
 	// Set data point variables to specified db / default values
-	let bybit_default_pair =
-		get_dbinf_by_entry(&mut db, "bybit_default_pair", Some("BTCUSDT"), None, false)?;
-	let bybit_default_sub =
-		get_dbinf_by_entry(&mut db, "bybit_default_sub", Some("main"), None, false)?;
-	let ratio_warn_num =
-		get_dbinf_by_entry(&mut db, "ratio_warn_num", Some("1"), None, false)?.parse::<f64>()?;
-	let mut bybit_pub_key;
-	let mut bybit_priv_key;
+	let config = crate::Config {
+		bybit_api: bybit_api,
+		bybit_default_pair: get_db_entry(&mut db, "bybit_default_pair", Some("BTCUSDT"))?.unwrap(),
+		bybit_default_sub: get_db_entry(&mut db, "bybit_default_sub", Some("main"))?.unwrap(),
+		ftx_default_pair: get_db_entry(&mut db, "ftx_default_pair", Some("BTC/PERP"))?.unwrap(),
+		ftx_default_sub: get_db_entry(&mut db, "ftx_default_sub", Some("main"))?.unwrap(),
+		/*
+		ftx_pub_key,
+		ftx_priv_key,
+		ftx_default_pair,
+		ftx_default_sub,
+		*/
+		ratio_warn_num: get_db_entry(&mut db, "ratio_warn_num", Some("1"))?.unwrap().parse::<f64>()?,
 
-	let mut force_retype = false;
-	loop {
-		bybit_pub_key = get_dbinf_by_entry(
-			&mut db,
-			"bybit_pub_key",
-			None,
-			Some("public Bybit API key"),
-			force_retype,
-		)?;
-		bybit_priv_key = get_dbinf_by_entry(
-			&mut db,
-			"bybit_priv_key",
-			None,
-			Some("private Bybit API secret"),
-			force_retype,
-		)?;
-		/* ftx api
-		let api = Rest::new(Options {
-			key: Some(ftx_pub_key.to_string()),
-			secret: Some(ftx_priv_key.to_string()),
-			subaccount: None,
-			endpoint: ftx::options::Endpoint::Com,
-		}); */
+	};
 
-		// Test Bybit API request to validate keys
-		let client =
-			http::Client::new(http::MAINNET_BYBIT, &bybit_pub_key, &bybit_priv_key).unwrap();
-		let options = FetchWalletFundRecordsOptions {
-			limit: Some(10),
-			..Default::default()
-		};
-		if checkapi {
-			match client.fetch_wallet_fund_records(options).await {
-				Ok(_x) => break,
-				Err(e) => {
-					println!();
-					println!("{}", boldt(format!("{}", e).as_str()));
-					println!();
-					println!(
-						"  {}",
-						boldt("! Bybit API keys are not valid, please try again !")
-					);
-					force_retype = true;
-					continue;
-				}
-			}
-		} else {
-			break;
-		}
-	}
-	Ok(super::Config {
-		bybit_default_pair,
-		bybit_default_sub,
-		ratio_warn_num,
-		bybit_pub_key,
-		bybit_priv_key,
-	})
+	Ok(config)
 }
 
-pub fn get_dbinf_by_entry(
+pub fn get_db_entry(
 	db: &mut polodb_core::Database,
 	key_name: &str,
 	default_value: Option<&str>,
-	name: Option<&str>,
-	force_retype: bool,
-) -> Result<String, Error> {
+) -> Result<Option<String>, Error> {
 	//let mut db = Database::open(database_location().as_str()).unwrap();
 	let mut collection = db.collection("config").unwrap();
 
-	let value = if !force_retype {
-		match collection
-			.find_one(&mk_document! {"_key": key_name})
-			.unwrap()
-		{
-			Some(val) => {
-				// If value is found in collection
-				val.get("value").unwrap().unwrap_string().to_string()
-			}
-			None => {
-				// If value is not found in collection
-				if let Some(default) = default_value {
-					// If there is default and not required custom, return default
-					default.to_string()
-				} else {
-					// If there is required value, ask user for input
-					//print!("{}[2J", 27 as char);
-					println!();
-					println!(
-						"{}",
-						boldt("termcrypt needs configuration for first time use.")
-					);
-					println!();
-					let input = ask(&format!("Please enter your {}", name.unwrap()), None)?;
-					db_insert_config(db, key_name, &input)?
-				}
+	let value = match collection.find_one(&mk_document! {"_key": key_name}).unwrap() {
+		// If value is found in collection
+		Some(val) => {
+			Some(val.get("value").unwrap().unwrap_string().to_string())
+		}
+		_ => {
+			if let Some(default_value) = default_value{
+				Some(default_value.to_string())
+			} else {
+				None
 			}
 		}
-	} else {
-		// This is to retype if required value was not valid
-		let input = ask(&format!("Please enter your {}", name.unwrap()), None)?;
-		db_insert_config(db, key_name, &input)?
 	};
 	Ok(value)
 }
@@ -156,23 +98,19 @@ pub fn db_insert_config(
 	// Checks if key already has a value
 
 	if inside {
-		dbg!("debug:update");
 		// Updates the database entry with new values
-		println!(
-			"{:?}",
-			collection
-				.update(
-					Some(&mk_document! { "_key": key_name }),
-					&mk_document! {
-					   "$set": mk_document! {
-						  "value": value
-					   }
-					},
-				)
-				.unwrap()
-		)
+		collection
+			.update(
+				Some(&mk_document! { "_key": key_name }),
+				&mk_document! {
+					"$set": mk_document! {
+						"value": value
+					}
+				},
+			)
+			.unwrap();
+		
 	} else {
-		dbg!("debug:insert");
 		// Inserts a new database entry
 		collection.insert(&mut document).unwrap();
 	}
