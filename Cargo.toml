@@ -1,7 +1,7 @@
 [package]
 name = "termcrypt"
 description = "Trading interface for the decentralized paradigm"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 readme = "README.md"
@@ -12,13 +12,12 @@ repository = "https://github.com/termcrypt/termcrypt"
 async-trait = "0.1.53"
 ansi_term = "^0.12.1"
 anyhow = "^1.0.44"
-bybit = { git = "https://github.com/peepopoggers/bybit-rs.git", branch = "main" }
 chrono = "^0.4"
 crossterm = "^0.23.2"
 #derive_more = "^0.99.17"
 dirs = "^4.0"
 #dotenv = "^0.15.0"
-#futures = "^0.3"
+futures = "^0.3"
 futures-util = "*"
 openssl = { version = "0.10", features = ["vendored"] }
 polodb_bson = "^2.0.0"
@@ -26,14 +25,18 @@ polodb_core = "^2.0.0"
 rand = "^0.8.4"
 rust_decimal = "^1.16"
 rust_decimal_macros = "^1.16"
-rustyline = "^9.0.0"
 terminal_size = "^0.1.17"
 tokio = { version = "1", features = ["full"] }
-#trait_enum = "0.5.0"
 tui = "^0.18.0"
 unicode-width = "0.1"
-#ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
+
+# Exchanges
+
+#bybit = { git = "https://github.com/wassup-/bybit-rs.git", branch = "main" }
+bybit = { git = "https://github.com/peepopoggers/bybit-rs.git", branch = "main" }
+ftx = { git="https://github.com/fabianboesiger/ftx", branch = "main" }
 #ftx = { git="https://github.com/peepopoggers/ftx", branch = "main" }
+binance-rs-async = "1.1.7"
 
 [dependencies.serde]
 version = "*"
