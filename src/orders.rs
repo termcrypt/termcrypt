@@ -35,13 +35,6 @@ pub enum EntryType {
 	Limit,
 }
 
-// Exchange type for local trade struct
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Exchange {
-	Ftx,
-	Bybit,
-}
-
 // Exchange coin market type (exchange specific)
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ExchangeContext {
