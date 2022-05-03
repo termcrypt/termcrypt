@@ -3,59 +3,11 @@ use ansi_term::Style;
 use anyhow::{bail, Error as AnyHowError};
 use rust_decimal::{Decimal, RoundingStrategy};
 use terminal_size::{terminal_size, Height, Width};
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
 
 use crate::{
 	UserSpace,
 	db::history_location
 };
-
-// User query while in command
-pub fn askout(prefix: &str, file_name: Option<String>) -> Result<String, AnyHowError> {
-	let mut line_genask = Editor::<()>::new();
-	let mut line_current_location: String = "".to_string();
-
-	if let Some(ref file_name_ac) = file_name {
-		line_current_location = format!(
-			"{}{}.txt",
-			history_location().as_str(),
-			file_name_ac.as_str()
-		);
-
-		// Creates history directory and file if not made already
-		if !std::path::Path::new(&line_current_location).exists() {
-			std::fs::File::create(&line_current_location).unwrap();
-		}
-		line_genask.load_history(&line_current_location).unwrap();
-	}
-
-	let readline = line_genask.readline(format!("  {}>> ", prefix).as_str());
-
-	match readline {
-		// Add some smart error handling to re-loop from askout function
-		Ok(readline) => {
-			// If user is using askout readline and enters q, app will exit
-			if readline == *"q" {
-				bail!("User stopped");
-			}
-
-			if let Some(_x) = file_name {
-				line_genask.add_history_entry(readline.as_str());
-				line_genask.append_history(&line_current_location).unwrap();
-			}
-			Ok(readline)
-			
-		}
-		Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-			println!("Exiting...");
-			panic!();
-		}
-		Err(e) => {
-			bail!("!! Cannot Readline: {e:?} !!");
-		}
-	}
-}
 
 // Yes/No prompt
 pub fn yn(text: String) -> Result<(), AnyHowError> {
@@ -180,6 +132,17 @@ pub mod termbug {
 		// Make user mid-command bails look cleaner
 		_error = if err_to_check.contains("user quit") {
 			vec!["-- You quit the current command --".to_string()]
+		} else if err_to_check.contains("keys") {
+			vec![
+				String::new(),
+				"!-- Command needs exchange API keys to function --!".to_string(),
+				format!("!-- Run the 'keys' command to set up API keys for {} --!", us.active_exchange.to_string()),
+			]
+		} else if err_to_check.contains("network is unreachable") {
+			vec![
+				String::new(),
+				"?-- Network is not responding: do you have internet --?".to_string(),
+			]
 		} else {
 			vec![
 				String::new(),
