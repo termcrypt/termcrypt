@@ -1,5 +1,12 @@
 use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
-use bybit::{rest::*, OrderType, Side, TimeInForce, TriggerPrice};
+use bybit::{
+    rest::*,
+    OrderType,
+    Side,
+    TimeInForce,
+    TriggerPrice,
+    http::{self, Client as BybitClient}
+};
 use async_trait::async_trait;
 use polodb_core::Database;
 use chrono::Utc;
@@ -8,29 +15,42 @@ use tui::{
     Terminal,
 };
 use crate::{
+    Exchange,
     UserSpace,
     utils::{yn},
     db::*,
     orders::*,
-    command_handling::CommandHandling
+    command_handling::{
+        CommandHandling,
+        api_check,
+    }
 };
 use super::bybit_utils::*;
 
-pub struct BybitStruct {}
+pub struct BybitStruct {
+    pub bybit_api: Option< BybitClient>,
+	//pub bybit_default_pair: String,
+	//pub bybit_default_sub: String,
+}
 
 #[async_trait]
 impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
     async fn price(&self, us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
-        let q_tickers = us.bybit_api.fetch_tickers(&us.pair).await?;
+        let bybit_api = api_check(self.bybit_api.as_ref())?;
+
+        let q_tickers = bybit_api.fetch_tickers(&us.pair).await?;
         let ticker = q_tickers.tickers().next().unwrap();
         us.prnt(format!("  Mid: {}", ticker.last_price));
         us.prnt(format!("  Ask: {}", ticker.ask_price));
         us.prnt(format!("  Bid: {}", ticker.bid_price));
+
         Ok(())
     }
 
     async fn balance(&self, us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
-        let wallets = us.bybit_api.fetch_wallets().await?;
+        let bybit_api = api_check(self.bybit_api.as_ref())?;
+
+        let wallets = bybit_api.fetch_wallets().await?;
 			let mut _more_pairs = false;
 
 			for currency in wallets.currencies() {
@@ -41,10 +61,13 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
 					_more_pairs = true;
 				}
 			}
+
         Ok(())
     }
 
     async fn order(&self, us: &mut UserSpace, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
+        let bybit_api = api_check(self.bybit_api.as_ref())?;
+
         let mut _order_type: OrderEntryType = OrderEntryType::Market;
         let mut _conditional_is_market = true;
 
@@ -105,7 +128,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
         let mut available_liquid: f64 = 0.0;
         let mut found_currency = false;
 
-        let wallets = us.bybit_api.fetch_wallets().await?;
+        let wallets = bybit_api.fetch_wallets().await?;
 
         // This infers that risk is based on singular balance of coin. It may not spread across inverse perpetual pairs.
         for currency in wallets.currencies() {
@@ -134,11 +157,11 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
         let takeprofit = us.ask_input("Take-Profit", terminal, Some("order_take_profit")).await?.parse::<f64>()?;
 
         // Get current pair price
-        let q_tickers = us.bybit_api.fetch_tickers(&us.pair).await?;
+        let q_tickers = bybit_api.fetch_tickers(&us.pair).await?;
         let ticker = q_tickers.tickers().next().unwrap();
         let last_price = ticker.last_price.parse::<f64>()?;
 
-        let q_symbols = us.bybit_api.fetch_symbols().await?;
+        let q_symbols = bybit_api.fetch_symbols().await?;
         let symbol_info = q_symbols
             .symbols()
             .into_iter()
@@ -332,7 +355,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
                 us.prnt(format!("{:?}", &order_data));
 
                 if is_linear {
-                    let order_result = us.bybit_api.place_active_linear_order(order_data).await?;
+                    let order_result = bybit_api.place_active_linear_order(order_data).await?;
 
                     order_id = order_result.id.to_string();
                     stop_loss = order_result.stop_loss;
@@ -341,7 +364,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
                     us.prnt(format!("{:?}", order_result));
 
                 } else {
-                    let order_result = us.bybit_api.place_active_order(order_data).await?;
+                    let order_result = bybit_api.place_active_order(order_data).await?;
 
                     order_id = order_result.id.to_string();
                     stop_loss = order_result.stop_loss;
@@ -383,7 +406,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
 
                     us.prnt(format!("{:?}", &order_data));
 
-                    us.bybit_api.place_linear_conditional_order(order_data).await?
+                    bybit_api.place_linear_conditional_order(order_data).await?
                 } else {
                     let order_data = PlaceActiveOrderData {
                         symbol: us.pair.to_string(),
@@ -408,7 +431,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
 
                     us.prnt(format!("{:?}", &order_data));
 
-                    us.bybit_api.place_conditional_order(order_data).await?
+                    bybit_api.place_conditional_order(order_data).await?
                 };
 
                 order_id = order_result.id.to_string();
@@ -462,6 +485,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
 
         us.bl();
         us.prnt("ORDER COMPLETE!".to_string());
+
         Ok(())
     }
 
@@ -470,8 +494,8 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
         async fn bybit_defaults<B: Backend>(us: &mut crate::UserSpace, terminal: &mut crate::Terminal<B>) -> Result<(), AnyHowError> {
             let mut database = Database::open(database_location().as_str()).unwrap();
 
-            us.prnt(" 1. Change default pair to current pair".to_string());
-            us.prnt(" 2. Change default subaccount to current subaccount".to_string());
+            us.prnt("  1. Change default pair to current pair".to_string());
+            us.prnt("  2. Change default subaccount to current subaccount".to_string());
 
             loop {
                 us.bl();
@@ -505,9 +529,9 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
             us.prnt(" 1. Bybit defaults".to_string());
             us.prnt(" 2. Universal defaults".to_string());
             let default_context = us.ask_input(
-                "[Choose an option number]",
+                "Choose an option number",
                 terminal,
-                Some("defaultcontext"),
+                Some("default_context"),
             ).await?;
             us.bl();
             match default_context.as_str() {
@@ -530,6 +554,36 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
             }
             break;
         }
+
+        Ok(())
+    }
+
+    async fn setup_api_keys(&self, us: &mut UserSpace, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
+        let bybit_pub_key = us.ask_input("Public Bybit API key", terminal, None).await?;
+        let bybit_priv_key = us.ask_input("Private Bybit API key", terminal, None).await?;
+
+        let test_client = BybitClient::new(
+			http::MAINNET_BYBIT,
+			&bybit_pub_key,
+			&bybit_priv_key,
+		).unwrap();
+
+        let test_request = test_client.fetch_wallets().await;
+
+        us.bl();
+        match test_request {
+            Ok(_x) => {
+                let mut database = Database::open(database_location().as_str()).unwrap();
+                db_insert_config(&mut database, "bybit_pub_key", &bybit_pub_key)?;
+                db_insert_config(&mut database, "bybit_priv_key", &bybit_priv_key)?;
+                us.switch_exchange(Exchange::Bybit).await?;
+                us.prnt(" Successfully setup API keys for Bybit".to_string());
+            },
+            Err(err) => {
+                us.prnt(format!(" !!! API KEYS FAILED: {} !!!", err));
+            }
+        }
+
         Ok(())
     }
 
@@ -538,13 +592,15 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
 
 
     async fn search(&self, us: &mut UserSpace, terminal: &mut Terminal<B>, command: &str) -> AnyHowResult<(), AnyHowError> {
+        let bybit_api = api_check(self.bybit_api.as_ref())?;
+
         let to_search = if command.starts_with("search ") {
             command.split("search ").collect()
         } else {
             us.ask_input("Search pairs", terminal, Some("pair_search")).await?
         };
         // Grabs second part of command to search for
-        let q_symbols = us.bybit_api.fetch_symbols().await?;
+        let q_symbols = bybit_api.fetch_symbols().await?;
         let symbols = q_symbols.symbols();
         us.bl();
 
@@ -560,10 +616,13 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
         }
         // Gives result of search operation
         us.prnt(format!("  {} Pairs Found", matched_count));
+
         Ok(())
     }
 
     async fn change_pair(&self, us: &mut UserSpace, terminal: &mut Terminal<B>, command: &str) -> AnyHowResult<(), AnyHowError> {
+        let bybit_api = api_check(self.bybit_api.as_ref())?;
+
         let mut joined_pair = if command.starts_with("pair ") {
             command.split("pair ").collect()
         } else {
@@ -577,7 +636,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
 
         joined_pair = joined_pair.to_uppercase();
 
-        let q_symbols = us.bybit_api.fetch_symbols().await?;
+        let q_symbols = bybit_api.fetch_symbols().await?;
         let mut is_real_pair: bool = false;
 
         for symbol in q_symbols.symbols() {
@@ -589,7 +648,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
         match is_real_pair {
             true => {
                 us.prnt("    Switched (pair found)".to_string());
-                let q_tickers = us.bybit_api.fetch_tickers(&joined_pair).await?;
+                let q_tickers = bybit_api.fetch_tickers(&joined_pair).await?;
                 let ticker = q_tickers.tickers().next().unwrap();
 
                 // Changes global pair value to new chosen pair
@@ -602,8 +661,7 @@ impl<B: Backend + std::marker::Send> CommandHandling<B> for BybitStruct {
                 us.prnt("    Switch failed (pair not found)".to_string());
             }
         }
+
         Ok(())
     }
-
-    
 }

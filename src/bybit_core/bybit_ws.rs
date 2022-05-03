@@ -1,11 +1,11 @@
-use anyhow::{Error as AnyHowError, Result};
+use anyhow::{Error as AnyHowError, Result as AnyHowResult};
 use bybit::ws;
 use futures_util::StreamExt;
 
 pub async fn bybit_websocket(
 	bybit_pub_key: String,
 	bybit_priv_key: String,
-) -> Result<(), AnyHowError> {
+) -> AnyHowResult<(), AnyHowError> {
 	let mut api = ws::Client::new(ws::MAINNET_BYBIT, &bybit_pub_key, &bybit_priv_key);
 	api.connect().await?;
 
