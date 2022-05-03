@@ -1,6 +1,6 @@
 <img src="src/img/logo.png" height="120"/>
 
-# termcrypt (VERY BETA)
+# termcrypt (beta)
 
 ![](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 <img src="http://ForTheBadge.com/images/badges/built-with-love.svg" height="26"/> ![](https://img.shields.io/github/commit-activity/m/termcrypt/termcrypt)
@@ -15,8 +15,9 @@ A terminal-like interface for efficiently trading the market.
 
 Planned Exchanges termcrypt currently supports:
 
-- [ ] FTX
 - [x] Bybit
+- [ ] FTX (Priority)
+- [ ] Binance
 
 Right now the project is in very early development, so to test it you will most likely have to clone the source and will have to follow the steps on the build section below. 
 
@@ -99,6 +100,7 @@ You also need the android sdk and ndk. You can install them by first installing 
 
 ```sh
 cargo install cargo-ndk
+rustup target install aarch64-linux-android
 ```
 
 Then you can run the following to build for android aarch64:
