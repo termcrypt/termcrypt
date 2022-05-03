@@ -1,6 +1,7 @@
 use crate::db::*;
 use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
 use chrono::{DateTime, Duration, NaiveTime, TimeZone, Utc};
+use unicode_width::UnicodeWidthStr;
 use polodb_core::Database;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -10,6 +11,7 @@ use tui::{
 };
 
 use crate::{
+	Exchange,
 	UserSpace,
 	utils::{
 		round_dp_tz,
@@ -70,9 +72,9 @@ pub async fn about(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
 	let about = [
 		String::new(),
 		"About termcrypt".to_string(),
-		" termcrypt is a project to bring maximum efficiency to crypto trading.".to_string(),
-		" It is an open sourced app licensed under AGPL3+ (a copyleft license).".to_string(),
-		" You can visit our repository at https://github.com/termcrypt/termcrypt".to_string(),
+		"  termcrypt is a project created for managing efficient trading.".to_string(),
+		"  It is a free, open sourced app licensed under AGPL3+ (a copyleft license).".to_string(),
+		"  You can visit our project repository at https://github.com/termcrypt/termcrypt".to_string(),
 		String::new(),
 		format!(" You are running termcrypt version: {}", super::VERSION)
 	];
@@ -246,18 +248,13 @@ pub async fn command_count(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> 
 
 pub async fn cowsay(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHowError> {
 	let message: String = command.split("cowsay ").collect();
-	let mut top = String::new();
-	let mut bottom = String::new();
-
-	for _x in 1..message.len() {
-		top += "_";
-		bottom += "-";
-	}
+	let top = "_".repeat(message.width());
+	let bottom = "-".repeat(message.width());
 
 	let cow = [
-		format!(" ___{}", top),
+		format!(" __{}", top),
 		format!("< {} >", message),
-		format!(" ---{}", bottom),
+		format!(" --{}", bottom),
 		r"        \   ^__^".to_string(),
 		r"         \  (oo)\_______".to_string(),
 		r"            (__)\       )\/\".to_string(),
@@ -283,6 +280,26 @@ pub async fn trade_fetch(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
 pub async fn trade_wipe(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
 	db_wipe_trades();
 	us.prnt("WIPED TRADES".to_string());
+
+	Ok(())
+}
+
+pub async fn switch_exchange(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHowError> {
+	let new_exchange: String = command.to_lowercase().split("switch ").collect();
+	let mut new_exchange_type: Option<Exchange> = None;
+
+	for enum_item in Exchange::VALUES {
+		if enum_item.to_string().to_lowercase() == new_exchange {
+			new_exchange_type = Some(enum_item);
+		}
+	}
+
+	if new_exchange_type.is_none() {
+		us.prnt(format!(" {} is not an exchange!", new_exchange));
+	} else {
+		us.switch_exchange(new_exchange_type.unwrap()).await?;
+		us.prnt(format!(" Switched to {} exchange", us.active_exchange.to_string()));
+	}
 
 	Ok(())
 }
