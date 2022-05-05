@@ -12,6 +12,7 @@ use std::{
 };
 use crossterm::event::{self, Event, KeyCode, KeyModifiers, MouseEventKind};
 use unicode_width::UnicodeWidthStr;
+use textwrap::wrap;
 
 use crate::{
 	//ActiveExchanges,
@@ -259,8 +260,8 @@ impl<'a> crate::UserSpace {
         let commands_widget_width = terminal_width()-3;
 
         for line in app.command_history.iter().cloned() {
-            for sub_string in sub_strings(line, commands_widget_width.into()) {
-                wrapped_command_history.push(sub_string);
+            for sub_string in wrap(line.as_str(), commands_widget_width as usize).iter().rev() {
+                wrapped_command_history.push(sub_string.to_string());
             }
         }
 
