@@ -34,9 +34,7 @@ termcrypt has many utilities that are growing day by day that help interact with
 - Order with risk-ordersize calculations
 - Subaccounts
 
-For a more comprehensive list, run `help` or `h` inside of termcrypt.
-
-<img src="src/img/example.png" height="80"/>
+For a more comprehensive list, run `help` inside of termcrypt.
 
 ## Installation
 Installing termcrypt is simple and it uses ~<500MB of space because it requires dependencies to compile.
