@@ -1,10 +1,8 @@
-use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
+use anyhow::{bail, Error, Result};
 use async_trait::async_trait;
-use tui::{
-    backend::Backend,
-    Terminal,
-};
+use tui::{backend::Backend, Terminal};
 use chrono::Utc;
+
 use crate::{
     UserSpace,
     utils::{yn},

@@ -1,16 +1,13 @@
 use ansi_term::ANSIGenericString;
 use ansi_term::Style;
-use anyhow::{bail, Error as AnyHowError};
+use anyhow::{bail, Error, Result};
 use rust_decimal::{Decimal, RoundingStrategy};
 use terminal_size::{terminal_size, Height, Width};
 
-use crate::{
-	UserSpace,
-	db::history_location
-};
+use crate::{UserSpace, db::history_location};
 
 // Yes/No prompt
-pub fn yn(text: String) -> Result<(), AnyHowError> {
+pub fn yn(text: String) -> Result<(), Error> {
 	match text.to_uppercase().as_str() {
 		"Y" | "YES" => {
 			println!("  HIT: Confirmed");
@@ -136,24 +133,27 @@ pub mod termbug {
 			vec![
 				String::new(),
 				"!-- Command needs exchange API keys to function --!".to_string(),
-				format!("!-- Run the 'keys' command to set up API keys for {} --!", us.active_exchange.to_string()),
+				format!("!-- Run the 'keys' command to set up API keys for {} --!", us.active_exchange),
 			]
-		} else if err_to_check.contains("network is unreachable") {
+		} else if 
+		err_to_check.contains("network is unreachable") ||
+		err_to_check.contains("failed to lookup address") {
 			vec![
 				String::new(),
-				"?-- Network is not responding: do you have internet --?".to_string(),
+				"?-- Network cannot be reached: do you have internet --?".to_string(),
 			]
 		} else {
 			vec![
 				String::new(),
-				format!("!-- Error: {err_msg:?} --!"),
-				format!("!-- If needed, report this error to {}. For reference, you are using version {} --!", crate::REPO, crate::VERSION),
+				format!("!-- Error: {err_msg:?}"),
+				format!("If needed, report this error to {}.\nFor reference, you are using version {} --!", crate::REPO, crate::VERSION),
 			]
 		};
 
 		for line in _error {
 			us.prnt(line);
 		}
+		us.bl();
 	}
 	
 	// Debug function goes here?

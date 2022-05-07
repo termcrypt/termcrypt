@@ -1,4 +1,4 @@
-use anyhow::{Error as AnyHowError, Result as AnyHowResult};
+use anyhow::{Error, Result};
 /*
 use futures::stream::StreamExt;
 use polodb_bson::mk_document;
@@ -12,6 +12,6 @@ use super::ftx_utils::*;
 */
 use ftx::options::Options;
 
-pub async fn ftx_websocket(options: Options) -> AnyHowResult<(), AnyHowError> {
+pub async fn init_websocket(_options: Options) -> Result<(), Error> {
 	Ok(())
 }

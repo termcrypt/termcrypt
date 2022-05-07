@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 
-pub fn bybit_get_base(mut fp: String) -> Result<String> {
+pub fn get_base(mut fp: String) -> Result<String> {
 	//fp is full pair
 	fp = fp.to_uppercase();
 	let base = match fp {

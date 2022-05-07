@@ -1,18 +1,20 @@
 #![windows_subsystem = "console"]
 #![crate_type = "bin"]
 use bybit::http::Client as BybitClient;
-use anyhow::{Error as AnyHowError, Result as AnyHowResult};
-//use serde::{Deserialize, Serialize};
-use std::{io::{self}, env, fs, time::{Duration}};
-use tui::{
-    backend::CrosstermBackend,
-    Terminal,
-};
+use anyhow::{bail, Error, Result};
+use std::{io, env, fs, time::Duration, fmt};
+use tui::{backend::CrosstermBackend, Terminal};
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
+	event::{DisableMouseCapture, EnableMouseCapture},
 	cursor::DisableBlinking,
     execute,
-    terminal::{self, disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{
+		self,
+		disable_raw_mode,
+		enable_raw_mode,
+		EnterAlternateScreen,
+		LeaveAlternateScreen
+	},
 };
 
 // Exchanges
@@ -30,14 +32,33 @@ mod command_handling;
 mod orders;
 
 // Exchanges
-use bybit_core::{bybit_commands::{self, BybitStruct}};
-use ftx_core::{ftx_commands::{self, FtxStruct}};
+use bybit_core::{
+	bybit_commands::{
+		self,
+		BybitStruct
+	}
+};
+use ftx_core::{
+	ftx_commands::{
+		self,
+		FtxStruct
+	}
+};
 
-use db::{get_db_info, history_location};
+use db::{
+	get_db_info,
+	history_location
+};
 use sync::*;
-use utils::{termbug, terminal_width};
+use utils::{
+	termbug,
+	terminal_width
+};
 //use command_handling;
-use userspace::EventLogType;
+use userspace::{
+	EventLogType,
+	UIMode
+};
 
 // Cargo information
 static VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -62,6 +83,9 @@ pub struct Config {
 	pub ftx_default_pair: String,
 	pub ftx_default_sub: String,
 	*/
+
+	// Non-Exchange specific
+
 	// Warns user if trade ratio is too low
 	pub ratio_warn_num: f64,
 }
@@ -75,23 +99,31 @@ pub enum Exchange {
 
 impl Exchange {
 	const VALUES: [Self; 2] = [Self::Bybit, Self::Ftx];
-	fn to_string(&self) -> String {
+}
+
+impl fmt::Display for Exchange {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match self {
-			Exchange::Bybit => {"Bybit".to_string()},
-			Exchange::Ftx => {"Ftx".to_string()},
+			Exchange::Bybit => write!(f, "Bybit"),
+			Exchange::Ftx => write!(f, "Ftx"),
+		}	
+	}
+}
+
+// Force option (returns result)
+trait ForceOption<T> {
+	fn force(self) -> Result<T, Error>;
+}
+impl<T> ForceOption<T> for Option<T> {
+	fn force(self: Option<T>) -> Result<T, Error> {
+		if let Some(value) = self {
+			Ok(value)
+		} else {
+			bail!("Option valued as None")
 		}
 	}
 }
 
-// UI display arrangements
-enum UIModes {
-	// Events section hidden
-	InputOnly,
-	// Default UI (both events and commands)
-	Split,
-	// Whole UI is for events
-	EventsOnly
-}
 
 // Userspace state
 #[derive(Debug, Clone)]
@@ -126,18 +158,18 @@ pub struct UserSpace {
 	pub tick_rate: Duration,
 	// Stream difference
 	pub stream_differ: u16,
+	// User Interface Layout Mode
+	pub ui_mode: UIMode,
 }
 
 // Where the program starts :)
 #[tokio::main]
-async fn main() -> AnyHowResult<(), AnyHowError> {
+async fn main() -> Result<(), Error> {
 	/* Use these args in the future
 	let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
 	loop {}
 	*/
-
-	
 	
 	// Creates termcrypt data folder & history subfolder if does not exist
 	let _x = fs::create_dir_all(history_location().as_str()).unwrap_or_else(|_| {
@@ -182,6 +214,7 @@ async fn main() -> AnyHowResult<(), AnyHowError> {
 		tick_rate: Duration::from_millis(6),
 		stream_differ: 0,
 		input_old: String::new(),
+		ui_mode: UIMode::Split,
 	};
 
 	// Initiate terminal layout

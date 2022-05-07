@@ -6,7 +6,7 @@ use tui::{
 	text::{Span, Spans, Text},
     Terminal, Frame,
 };
-use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
+use anyhow::{bail, Error, Result};
 use std::{
 	time::{Duration, Instant},
 };
@@ -41,9 +41,22 @@ pub enum EventLogType {
 	Empty,
 }
 
+// UI display arrangements
+#[derive(Debug, Clone)]
+pub enum UIMode {
+	// Default UI (both events and commands)
+	Split,
+	// Orderinfo (both order information and commands)
+	OrderInfo,
+	// Events section hidden
+	CommandsOnly,
+	// Whole UI is for events
+	EventsOnly
+}
+
 impl<'a> crate::UserSpace {
     // Run the app and UI
-	pub async fn run_app<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
+	pub async fn run_app<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> Result<(), Error> {
 		let mut last_tick = Instant::now();
 
 		// Ascii art output
@@ -116,7 +129,6 @@ impl<'a> crate::UserSpace {
 								self.handle_input(terminal).await?;
 
                                 self.input_prefix = unwiped_prefix;
-                                self.command_history.insert(0, " ".to_string());
 							}
 							KeyCode::Char(c) => {
 								if self.input.width() == 0 && c == ' ' {
@@ -259,7 +271,7 @@ impl<'a> crate::UserSpace {
         let mut wrapped_command_history: Vec<String> = Vec::new();
         let commands_widget_width = terminal_width()-3;
 
-        for line in app.command_history.iter().cloned() {
+        for line in app.command_history.iter() {
             for sub_string in wrap(line.as_str(), commands_widget_width as usize).iter().rev() {
                 wrapped_command_history.push(sub_string.to_string());
             }
@@ -322,7 +334,7 @@ impl<'a> crate::UserSpace {
     }
 
     // In-built function to ask user for input for post-command input
-    pub async fn ask_input<B: Backend>(&mut self, prefix: &str, terminal: &mut Terminal<B>, _history_save_name: Option<&str>) -> AnyHowResult<String, AnyHowError> {
+    pub async fn ask_input<B: Backend>(&mut self, prefix: &str, terminal: &mut Terminal<B>, _history_save_name: Option<&str>) -> Result<String, Error> {
         self.input = "".to_string();
 		let old_prefix = self.input_prefix.to_owned();
         let mut last_tick = Instant::now();
@@ -397,7 +409,7 @@ impl<'a> crate::UserSpace {
     }
 
     // Handle user input through the input widget
-	async fn handle_input<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
+	async fn handle_input<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> Result<(), Error> {
 		// Start exchange instance
 
 		let chosen_exchange: Box<dyn CommandHandling<B>> = match self.active_exchange {
@@ -435,14 +447,14 @@ impl<'a> crate::UserSpace {
 		Ok(())
 	}
 
-	pub async fn switch_exchange(&mut self, new_exchange: Exchange) -> AnyHowResult<(), AnyHowError>{
+	pub async fn switch_exchange(&mut self, new_exchange: Exchange) -> Result<(), Error>{
 		self.db_info = get_db_info().await?;
 		self.active_exchange = new_exchange;
 		self.use_db_defaults()?;
 		Ok(())
 	}
 
-	pub fn use_db_defaults(&mut self) -> AnyHowResult<(), AnyHowError> {
+	pub fn use_db_defaults(&mut self) -> Result<(), Error> {
 		let sub_account: String;
 		let pair: String;
 

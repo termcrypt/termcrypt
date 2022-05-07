@@ -1,4 +1,4 @@
-use anyhow::{bail, Error as AnyHowError, Result};
+use anyhow::{bail, Error, Result};
 
 // Input variables into order calculation function
 #[derive(Debug)]
@@ -75,7 +75,7 @@ pub enum OrderDirection {
 }
 
 // Calculate order quantities and validate inputs
-pub fn calculate_order(ov: OrderCalcEntry) -> Result<OrderCalcExit, AnyHowError> {
+pub fn calculate_order(ov: OrderCalcEntry) -> Result<OrderCalcExit, Error> {
 	let error_margin = f64::EPSILON;
 
 	let mut _islong = true;

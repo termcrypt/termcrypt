@@ -1,6 +1,12 @@
 use crate::db::*;
-use anyhow::{bail, Error as AnyHowError, Result as AnyHowResult};
-use chrono::{DateTime, Duration, NaiveTime, TimeZone, Utc};
+use anyhow::{Error, Result, Context};
+use chrono::{
+	DateTime,
+	Duration,
+	NaiveTime,
+	TimeZone,
+	Utc
+};
 use unicode_width::UnicodeWidthStr;
 use polodb_core::Database;
 use rust_decimal::prelude::*;
@@ -20,37 +26,41 @@ use crate::{
 	}
 };
 
-pub async fn help(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
+pub async fn help(us: &mut UserSpace) -> Result<(), Error> {
 	// Dynamically listing these would be "harder" somebody said. Oh well...
 	let help_msg = [
 		"UTILITY",
-		" h | help - Get information about commands",
-		" about | info - Information about the project",
-		" afetch | aclear - Ascii art with info",
-		" clr | clear - Clear the terminal",
-		" date - Get current local and utc date",
-		" time - Get current local and utc time",
-		" ses | sessions - Get trading session times",
-		"MARKETS",
-		" bal | balance - Get balances of subaccount",
-		" search | search [query] - Query pairs",
-		" pair | pair [query] - Lets you change the current pair",
-		" p | price - Return mark, ask and bid price for pair",
-		"ORDERS",
-		" order | o - Start an order",
-		" m - Start a market order",
-		" l - Start a limit order",
-		" ob - Start an OB-based order",
-		"SETTINGS",
-		" def | defaults - Change startup defaults (exchange specific)",
-		" conf | config - Change configuration settings",
-		"KEYBINDS",
-		" [UP ARROW] - Replaces input with previous command",
-		" [DOWN ARROW] - Replaces input with the latter command",
-		" [CTRL+C] - Quits typing when in command",
-		" [CTRL+BACKSPACE] - Clears input",
+		"  help -> Get information about commands",
+		"  about / info -> Information about the project",
+		"  afetch / aclear -> Ascii art with info",
+		"  clear / clr -> Clear the terminal",
+		"  date -> Get current local and UTC date",
+		"  time -> Get current local and UTC time",
+		"  sessions / ses -> Get trading session times",
 		"",
-		" More information is available in our documentation.",
+		"MARKETS",
+		"  balance / bal -> Get balances of subaccount",
+		"  search / search [query] -> Query pairs",
+		"  pair / pair [query] -> Lets you change the current pair",
+		"  price / p -> Return mark, ask and bid price for pair",
+		"",
+		"ORDERS",
+		"  order / o -> Start an order",
+		"  m -> Start a market order",
+		"  l -> Start a limit order",
+		"  ob -> Start an OB-based order",
+		"",
+		"SETTINGS",
+		"  defaults / def -> Change startup defaults (exchange specific)",
+		"  config / conf -> Change configuration settings",
+		"",
+		"KEYBINDS",
+		"  [UP ARROW] -> Replaces input with previous command",
+		"  [DOWN ARROW] -> Replaces input with the latter command",
+		"  [CTRL+C] -> Quits typing when in command or quits app",
+		"  [CTRL+BACKSPACE] -> Clears input",
+		"",
+		"More information is available in our documentation.",
 	];
 
 	//"SUBACCOUNTS"
@@ -68,7 +78,7 @@ pub async fn help(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
 	Ok(())
 }
 
-pub async fn about(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
+pub async fn about(us: &mut UserSpace) -> Result<(), Error> {
 	let about = [
 		String::new(),
 		"About termcrypt".to_string(),
@@ -86,8 +96,8 @@ pub async fn about(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
 	Ok(())
 }
 
-pub async fn config<B: Backend + std::marker::Send>(us: &mut UserSpace, terminal: &mut Terminal<B>) -> AnyHowResult<(), AnyHowError> {
-	let mut database = Database::open(database_location().as_str()).unwrap();
+pub async fn config<B: Backend + std::marker::Send>(us: &mut UserSpace, terminal: &mut Terminal<B>) -> Result<(), Error> {
+	let mut database = Database::open(database_location().as_str()).context("")?;
 
 	us.prnt(" 1. Change SLTP-Ratio warning number".to_string());
 	let choice = us.ask_input("[Option Number]", terminal, Some("defaults_option_number")).await?;
@@ -108,7 +118,7 @@ pub async fn config<B: Backend + std::marker::Send>(us: &mut UserSpace, terminal
 	Ok(())
 }
 
-pub async fn sessions(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
+pub async fn sessions(us: &mut UserSpace) -> Result<(), Error> {
 	// Trading session time information
 	us.prnt("Trading Sessions".to_string());
 	let utc_time = Utc::now().time();
@@ -211,21 +221,21 @@ pub async fn sessions(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
 	Ok(())
 }
 
-pub async fn date(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
-	us.prnt(format!("  {}", chrono::Utc::now().format("[UTC] %b %-d %Y")));
-	us.prnt(format!("  {}", chrono::Local::now().format("[Now] %b %-d %Y")));
+pub async fn date(us: &mut UserSpace) -> Result<(), Error> {
+	us.prnt(format!("  {}", chrono::Utc::now().format("UTC: %b %-d %Y")));
+	us.prnt(format!("  {}", chrono::Local::now().format("Now: %b %-d %Y")));
 
 	Ok(())
 }
 
-pub async fn time(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
-	us.prnt(format!("  {}", chrono::Utc::now().format("[UTC] %H:%M:%S")));
-	us.prnt(format!("  {}", chrono::Local::now().format("[Now] %H:%M:%S")));
+pub async fn time(us: &mut UserSpace) -> Result<(), Error> {
+	us.prnt(format!("  {}", chrono::Utc::now().format("UTC: %H:%M:%S")));
+	us.prnt(format!("  {}", chrono::Local::now().format("Now: %H:%M:%S")));
 
 	Ok(())
 }
 
-pub async fn afetch(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHowError> {
+pub async fn afetch(us: &mut UserSpace, command: &str) -> Result<(), Error> {
 	if command == "aclear" {
 		us.clear_commands();
 	}
@@ -234,19 +244,19 @@ pub async fn afetch(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHo
 	Ok(())
 }
 
-pub async fn ping_pong(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
+pub async fn ping_pong(us: &mut UserSpace) -> Result<(), Error> {
 	us.prnt(String::from("🏓 Pong!"));
 
 	Ok(())
 }
 
-pub async fn command_count(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
+pub async fn command_count(us: &mut UserSpace) -> Result<(), Error> {
 	us.prnt(format!("{} Command{} this session", us.command_count, s_or_not(us.command_count as usize)));
 
 	Ok(())
 }
 
-pub async fn cowsay(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHowError> {
+pub async fn cowsay(us: &mut UserSpace, command: &str) -> Result<(), Error> {
 	let message: String = command.split("cowsay ").collect();
 	let top = "_".repeat(message.width());
 	let bottom = "-".repeat(message.width());
@@ -271,20 +281,20 @@ pub async fn cowsay(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHo
 
 // Testing commands (for developer use)
 
-pub async fn trade_fetch(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
+pub async fn trade_fetch(us: &mut UserSpace) -> Result<(), Error> {
 	us.prnt(format!("{:?}", db_get_ftrades()?));
 
 	Ok(())
 }
 
-pub async fn trade_wipe(us: &mut UserSpace) -> AnyHowResult<(), AnyHowError> {
-	db_wipe_trades();
+pub async fn trade_wipe(us: &mut UserSpace) -> Result<(), Error> {
+	db_wipe_trades()?;
 	us.prnt("WIPED TRADES".to_string());
 
 	Ok(())
 }
 
-pub async fn switch_exchange(us: &mut UserSpace, command: &str) -> AnyHowResult<(), AnyHowError> {
+pub async fn switch_exchange(us: &mut UserSpace, command: &str) -> Result<(), Error> {
 	let new_exchange: String = command.to_lowercase().split("switch ").collect();
 	let mut new_exchange_type: Option<Exchange> = None;
 
@@ -297,8 +307,8 @@ pub async fn switch_exchange(us: &mut UserSpace, command: &str) -> AnyHowResult<
 	if new_exchange_type.is_none() {
 		us.prnt(format!(" {} is not an exchange!", new_exchange));
 	} else {
-		us.switch_exchange(new_exchange_type.unwrap()).await?;
-		us.prnt(format!(" Switched to {} exchange", us.active_exchange.to_string()));
+		us.switch_exchange(new_exchange_type.context("")?).await?;
+		us.prnt(format!(" Switched to {} exchange", us.active_exchange));
 	}
 
 	Ok(())

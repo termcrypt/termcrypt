@@ -1,7 +1,7 @@
-use anyhow::{Error as AnyHowError, Result};
+use anyhow::{Error, Result};
 use bybit::http;
 
-pub async fn bybit_startup_sync(_api: &mut http::Client) -> Result<(), AnyHowError> {
+pub async fn startup_sync(_api: &mut http::Client) -> Result<(), Error> {
 	//tbf
 	Ok(())
 }
