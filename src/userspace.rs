@@ -145,7 +145,7 @@ impl<'a> crate::UserSpace {
 				} else if let Event::Mouse(mouse) = evvent {
                     match mouse.kind {
                         MouseEventKind::ScrollDown => {
-                            for _x in 1..4 {
+                            for _x in 1..3 {
                                 if !self.command_history_scroll_overflow.is_empty() {
                                     let e = self.command_history_scroll_overflow[0].to_owned();
                                     self.command_history.insert(0, e);
@@ -156,7 +156,7 @@ impl<'a> crate::UserSpace {
                         },
                         MouseEventKind::ScrollUp => {
                             if self.command_history.len() >= 10 {
-                                for _x in 1..4 {
+                                for _x in 1..3 {
                                     let e = self.command_history[0].to_owned();
                                     self.command_history_scroll_overflow.insert(0, e);
                                     self.command_history.remove(0);
