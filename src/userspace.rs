@@ -56,7 +56,7 @@ pub enum UIMode {
 
 impl<'a> crate::UserSpace {
     // Run the app and UI
-	pub async fn run_app<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> Result<(), Error> {
+	pub async fn run_app_ui<B: Backend + std::marker::Send>(&mut self, terminal: &mut Terminal<B>) -> Result<(), Error> {
 		let mut last_tick = Instant::now();
 
 		// Ascii art output

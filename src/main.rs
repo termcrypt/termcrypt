@@ -185,12 +185,6 @@ async fn main() -> Result<(), Error> {
 	// Initiates database
 	let db_info = get_db_info().await?;
 
-	/*
-	pair: db_info.bybit_default_pair.to_owned(),
-		sub_account: db_info.bybit_default_sub.to_owned(),
-		input_prefix: format!("[{}]({})>", db_info.bybit_default_sub, db_info.bybit_default_pair),
-	*/
-
 	// Initiates userspace (UI and main loop)
 	let mut userspace = UserSpace {
 		active_exchange: Exchange::Bybit,
@@ -234,7 +228,7 @@ async fn main() -> Result<(), Error> {
     let mut terminal = Terminal::new(backend)?;
 
     // Create app and run it (main app)
-    userspace.run_app(&mut terminal).await?;
+    userspace.run_app_ui(&mut terminal).await?;
 
     // Restore terminal
     disable_raw_mode()?;

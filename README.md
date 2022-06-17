@@ -108,6 +108,7 @@ Then you can run the following to build for android aarch64:
 cargo ndk -t aarch64-linux-android build --release
 ```
 
+Here is a one-liner: `export ANDROID_NDK_HOME=~/Android/Sdk/ndk/20.1.5948944&&rustup target install aarch64-linux-android&&cargo ndk -t aarch64-linux-android build --release`
 
 ## Hall of Fame
 This section gives credit to people that have helped substantially in the development of this project.
